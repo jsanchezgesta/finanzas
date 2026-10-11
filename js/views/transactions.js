@@ -6,6 +6,7 @@ import { confirmCategory } from '../categorize.js';
 import { cleanDescription } from '../merchant.js';
 import { setParams, getContext } from '../main.js';
 import { setTrip } from '../trips.js';
+import { VALUE_LABELS, rateTransaction } from '../coach.js';
 
 const PAGE = 150;
 
@@ -131,6 +132,14 @@ export function editTransaction(id) {
   drawPicker(); drawNature();
 
   const note = h('input', { type: 'text', placeholder: 'Nota (opcional)', value: t.note || '', style: { width: '100%' } });
+  let value = t.value || '';
+  const merchantValue = state.values?.[t.merchant]?.v;
+  const valueBox = h('div', {});
+  const drawValue = () => {
+    valueBox.replaceChildren(h('div', { class: 'seg' }, [['', merchantValue ? 'Comercio: ' + VALUE_LABELS[merchantValue].toLowerCase() : 'Según comercio'], ['need', 'Necesidad'], ['want', 'Deseo'], ['like', 'Capricho']].map(([v, l]) =>
+      h('button', { type: 'button', class: value === v ? 'on' : '', onclick: () => { value = v; drawValue(); } }, l))));
+  };
+  drawValue();
   const trips = [...(state.trips || [])].sort((a, b) => b.start.localeCompare(a.start));
   const tripSel = trips.length ? h('select', { style: { width: '100%' } }, h('option', { value: '' }, 'Ninguno'), trips.map(tr => h('option', { value: tr.id }, (tr.emoji || '✈️') + ' ' + tr.name))) : null;
   if (tripSel) tripSel.value = t.tripId || '';
@@ -140,6 +149,7 @@ export function editTransaction(id) {
       h('div', { class: 'amount ' + (t.amount > 0 ? 'pos' : ''), style: { fontSize: '20px', fontWeight: 700 } }, money(t.amount, { sign: true }))),
     h('div', { class: 'small', style: { color: 'var(--ink-2)', margin: '8px 0 4px', wordBreak: 'break-word' } }, t.description),
     h('div', { class: 'chip-group-label' }, 'Categoría'), pickerBox, natureBox,
+    t.amount < 0 ? [h('div', { class: 'chip-group-label' }, 'Valoración (solo este gasto)'), valueBox] : null,
     tripSel ? [h('div', { class: 'chip-group-label' }, 'Viaje'), tripSel] : null,
     h('div', { class: 'chip-group-label' }, 'Nota'), note,
     h('div', { class: 'review-options', style: { flexDirection: 'column', alignItems: 'flex-start' } },
@@ -160,6 +170,7 @@ export function editTransaction(id) {
     update(s => {
       const tx = s.transactions.find(x => x.id === id);
       tx.note = note.value.trim();
+      if ((tx.value || '') !== value) rateTransaction(s, id, value || null);
       if (tripSel && (tripSel.value || null) !== (tx.tripId || null)) setTrip(s, [id], tripSel.value || null);
       if (categoryId) confirmCategory(s, [id], categoryId, { remember, applyToPast, nature: nature || null });
     });

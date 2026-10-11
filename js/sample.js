@@ -149,6 +149,10 @@ export function loadSample(state) {
     confirmCategory(state, g.txs.map(t => t.id), cat, { remember: true });
   }
   sampleTrip(state, londonStart);
+  // A few merchants already rated in the saving coach.
+  const at = Date.now() - 10 * 86400000;
+  state.values = state.values || {};
+  for (const [m, v] of [['glovo', 'like'], ['just eat', 'like'], ['amzn mktp', 'like'], ['netflix', 'want'], ['spotify', 'want'], ['bar pepita', 'want'], ['cafe camelia', 'like']]) state.values[m] = { v, at };
 }
 
 function sampleTrip(state, londonStart) {
@@ -167,4 +171,5 @@ export function removeSample(state) {
   // Remove rules that only existed because of the sample.
   const merchants = new Set(state.transactions.map(t => t.merchant));
   state.rules = state.rules.filter(r => r.type !== 'merchant' || merchants.has(r.match));
+  for (const m of Object.keys(state.values || {})) if (!merchants.has(m)) delete state.values[m];
 }

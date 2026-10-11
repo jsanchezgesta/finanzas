@@ -9,6 +9,8 @@ import * as importer from './views/import.js';
 import * as settings from './views/settings.js';
 import * as inversion from './views/invest.js';
 import * as viajes from './views/trips.js';
+import * as ahorro from './views/coach.js';
+import { reviewQueue } from './coach.js';
 
 const routes = {
   resumen: dashboard,
@@ -17,6 +19,7 @@ const routes = {
   plan,
   inversion,
   viajes,
+  ahorro,
   importar: importer,
   ajustes: settings,
 };
@@ -59,7 +62,7 @@ function render({ keepScroll = false } = {}) {
   current = { route, view };
   clear(main);
   view.render(main, { state: getState(), ctx: getContext(), params, navigate });
-  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (route === 'viajes' ? 'plan' : route)));
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === ({ viajes: 'plan', inversion: 'ahorro' }[route] || route)));
   if (keepScroll && same) {
     window.scrollTo(0, scroll);
     if (focusKey) main.querySelector(`[aria-label="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
@@ -72,6 +75,9 @@ function updateBadge() {
   const b = document.getElementById('pending-badge');
   b.hidden = n === 0;
   b.textContent = n > 99 ? '99+' : String(n);
+  const due = getState().transactions.length ? reviewQueue(getState(), getContext()).length : 0;
+  const cb = document.getElementById('coach-badge');
+  if (cb) { cb.hidden = due === 0; cb.textContent = due > 99 ? '99+' : String(due); }
 }
 
 async function start() {

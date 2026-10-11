@@ -5,6 +5,7 @@ import { catIcon, emptyState } from '../ui.js';
 import { loadSample } from '../sample.js';
 import { update } from '../store.js';
 import { tripsInMonths } from '../trips.js';
+import { reviewQueue } from '../coach.js';
 
 export function render(root, { state, ctx, params, navigate }) {
   if (!state.transactions.length) {
@@ -53,6 +54,13 @@ export function render(root, { state, ctx, params, navigate }) {
     root.append(h('div', { class: 'banner' },
       h('div', {}, h('b', {}, `${pendingAll} movimientos por revisar. `), h('span', { class: 'muted' }, 'Hasta que los confirmes, cuentan como «sin categoría».')),
       h('a', { class: 'btn primary sm', href: '#/revisar' }, 'Revisar ahora')));
+  }
+
+  const due = reviewQueue(state, ctx).length;
+  if (due && !pendingAll) {
+    root.append(h('div', { class: 'banner ok' },
+      h('div', {}, h('b', {}, `${due} ${due === 1 ? 'gasto' : 'gastos'} por revisar en el coach de ahorro. `), h('span', { class: 'muted' }, '¿Necesidad, deseo o capricho?')),
+      h('a', { class: 'btn sm', href: '#/ahorro' }, 'Revisar')));
   }
 
   // ---------- KPIs ----------

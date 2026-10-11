@@ -3,14 +3,15 @@ import { latestMonth } from '../analysis.js';
 import { investmentSummary, savebackStatus, hasTradeRepublic } from '../invest.js';
 import { stackedBars } from '../charts.js';
 import { emptyState } from '../ui.js';
+import { savingsTabs } from './coach.js';
 
 export function render(root, { state, params, navigate }) {
   const period = params.p === 'todo' ? 'todo' : '12m';
   root.append(h('div', { class: 'page-head' },
-    h('div', {}, h('h1', {}, 'Inversión'), h('div', { class: 'sub' }, 'Aportaciones, Saveback, intereses y posiciones.')),
-    h('div', { class: 'seg' },
+    h('div', {}, h('h1', {}, 'Ahorro'), h('div', { class: 'sub' }, 'Aportaciones, Saveback, intereses y posiciones.')),
+    h('div', { class: 'btn-row' }, savingsTabs('inversion'), h('div', { class: 'seg' },
       h('button', { class: period === '12m' ? 'on' : '', onclick: () => navigate('inversion', { p: '12m' }) }, '12 meses'),
-      h('button', { class: period === 'todo' ? 'on' : '', onclick: () => navigate('inversion', { p: 'todo' }) }, 'Todo'))));
+      h('button', { class: period === 'todo' ? 'on' : '', onclick: () => navigate('inversion', { p: 'todo' }) }, 'Todo')))));
 
   const latest = latestMonth(state);
   if (!latest) {

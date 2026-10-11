@@ -60,6 +60,21 @@ export function render(root, { state }) {
       h('label', { class: 'field' }, h('span', {}, 'Saveback máximo/mes (€)'), sbInput('monthlyCap', '1')),
       h('label', { class: 'field' }, h('span', {}, 'Planes mínimos/mes (€)'), sbInput('minPlan', '10')))));
 
+  // ---------- coach ----------
+  const cc = { returnRate: 0.07, years: 10, reviewDays: 90, ...(state.settings.coach || {}) };
+  const ccInput = (key, step, scale = 1) => {
+    const i = h('input', { type: 'number', step, min: '0', value: Math.round(cc[key] * scale * 100) / 100, style: { width: '100%' } });
+    i.addEventListener('change', () => update(s => { s.settings.coach = { ...cc, ...(s.settings.coach || {}), [key]: (Number(i.value) || 0) / scale }; }));
+    return i;
+  };
+  grid.append(h('section', { class: 'card span-6' },
+    h('div', { class: 'card-head' }, h('h2', {}, 'Coach de ahorro')),
+    h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Rentabilidad anual supuesta para calcular el coste de oportunidad (el MSCI World ha rondado el 7 % anual a largo plazo; no es una garantía) y cada cuánto vuelves a revisar un comercio.'),
+    h('div', { class: 'map-grid' },
+      h('label', { class: 'field' }, h('span', {}, 'Rentabilidad anual (%)'), ccInput('returnRate', '0.5', 100)),
+      h('label', { class: 'field' }, h('span', {}, 'Años'), ccInput('years', '1')),
+      h('label', { class: 'field' }, h('span', {}, 'Revisar cada (días)'), ccInput('reviewDays', '15')))));
+
   // ---------- accounts ----------
   const accCard = h('section', { class: 'card span-6' }, h('div', { class: 'card-head' }, h('h2', {}, 'Cuentas')));
   if (!state.accounts.length) accCard.append(h('p', { class: 'small muted' }, 'Se crean al importar el primer extracto de cada banco.'));
