@@ -1,5 +1,5 @@
 // Offline support: serve the app shell from cache, refresh it in the background.
-const VERSION = 'finanzas-v4';
+const VERSION = 'finanzas-v5';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'icons/icon.svg', 'icons/icon-192.png',
   'js/main.js', 'js/util.js', 'js/store.js', 'js/defaults.js', 'js/parse.js', 'js/merchant.js', 'js/categorize.js',

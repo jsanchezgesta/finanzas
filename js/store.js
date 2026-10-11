@@ -2,6 +2,7 @@
 // Nothing leaves the device.
 
 import { defaultState, DEFAULT_CATEGORIES } from './defaults.js';
+import { TRIP_CATEGORIES } from './trips.js';
 
 const DB_NAME = 'finanzas';
 const STORE = 'kv';
@@ -50,6 +51,11 @@ export function migrate(s) {
   const ids = new Set(out.categories.map(c => c.id));
   const deleted = new Set(out.settings.deletedCategoryIds || []);
   for (const c of DEFAULT_CATEGORIES) if (!ids.has(c.id) && !deleted.has(c.id)) out.categories.push({ ...c });
+  // Trip budgets are keyed by trip categories (vuelos, alojamiento…) since v5.
+  const tripIds = new Set(TRIP_CATEGORIES.map(c => c.id));
+  for (const t of out.trips || []) {
+    t.catBudgets = Object.fromEntries(Object.entries(t.catBudgets || {}).filter(([k]) => tripIds.has(k)));
+  }
   return out;
 }
 

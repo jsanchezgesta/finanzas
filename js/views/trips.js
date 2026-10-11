@@ -1,6 +1,8 @@
 import { h, money, pct, dateLabel, daysBetween, round2 } from '../util.js';
 import { update, getState } from '../store.js';
-import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates } from '../trips.js';
+import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates, TRIP_CATEGORIES, tripCategoryOf, setTripCategory } from '../trips.js';
+
+const TRIP_CAT_MAP = new Map(TRIP_CATEGORIES.map(c => [c.id, c]));
 import { buildContext } from '../analysis.js';
 import { catIcon, openSheet, toast, emptyState } from '../ui.js';
 import { editTransaction } from './transactions.js';
@@ -81,16 +83,15 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
   const grid = h('div', { class: 'grid' });
   root.append(grid);
 
-  // Category breakdown with optional per-category budgets
-  const catIds = new Set([...Object.keys(s.byCategory), ...Object.keys(trip.catBudgets || {})]);
-  const rows = [...catIds].map(id => ({ id, cat: ctx.cats.get(id), spent: s.byCategory[id] || 0, budget: Number(trip.catBudgets?.[id]) || 0 }))
-    .sort((a, b) => b.spent - a.spent || b.budget - a.budget);
+  // Breakdown by trip category, each with an optional budget
+  const rows = TRIP_CATEGORIES.map(c => ({ id: c.id, cat: c, spent: s.byCategory[c.id] || 0, budget: Number(trip.catBudgets?.[c.id]) || 0 }))
+    .filter(r => r.id !== 'otros' || r.spent || r.budget);
   const catCard = h('section', { class: 'card span-6' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'Por categoría'), h('span', { class: 'meta' }, 'presupuesto por categoría opcional')));
+    h('div', { class: 'card-head' }, h('h2', {}, 'Por partida'), h('span', { class: 'meta' }, 'gastado · presupuesto')));
   const list = h('div', { class: 'rows' });
   for (const r of rows) {
     const ratio = r.budget ? r.spent / r.budget : 0;
-    const input = h('input', { type: 'number', min: '0', step: '10', value: r.budget || '', placeholder: '—', 'aria-label': 'Presupuesto ' + (r.cat?.name || 'sin categoría'), style: { width: '76px', textAlign: 'right', height: '34px' } });
+    const input = h('input', { type: 'number', min: '0', step: '10', value: r.budget || '', placeholder: '—', 'aria-label': 'Presupuesto ' + r.cat.name, style: { width: '76px', textAlign: 'right', height: '34px' } });
     input.addEventListener('change', () => setTimeout(() => update(st => {
       const t = st.trips.find(x => x.id === trip.id);
       t.catBudgets = { ...(t.catBudgets || {}) };
@@ -100,25 +101,17 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
     list.append(h('div', { class: 'row' },
       catIcon(r.cat, 30),
       h('div', { class: 'grow' },
-        h('div', { class: 'title' }, r.cat?.name || 'Sin categoría'),
-        h('div', { class: 'bar' }, h('div', { style: { width: (r.budget ? Math.min(100, ratio * 100) : 100) + '%', background: ratio > 1 ? 'var(--neg)' : r.cat?.color || 'var(--muted)', opacity: r.budget ? 1 : 0.35 } }))),
-      h('div', { style: { textAlign: 'right', minWidth: '70px' } }, h('div', { class: 'amount ' + (ratio > 1 ? 'neg' : '') }, money(r.spent, { decimals: false }))),
+        h('div', { class: 'title' }, r.cat.name),
+        h('div', { class: 'bar' }, h('div', { style: { width: (r.budget ? Math.min(100, ratio * 100) : (r.spent ? 100 : 0)) + '%', background: ratio > 1 ? 'var(--neg)' : r.cat.color, opacity: r.budget ? 1 : 0.35 } }))),
+      h('div', { style: { textAlign: 'right', minWidth: '70px' } },
+        h('div', { class: 'amount ' + (ratio > 1 ? 'neg' : '') }, money(r.spent, { decimals: false })),
+        r.budget ? h('div', { class: 'small ' + (ratio > 1 ? 'neg' : 'muted') }, ratio > 1 ? '+' + money(r.spent - r.budget, { decimals: false }) : 'quedan ' + money(r.budget - r.spent, { decimals: false })) : null),
       input));
   }
-  // Add a budget line for a category with no spend yet
-  const addSel = h('select', { style: { maxWidth: '220px' } }, h('option', { value: '' }, '+ Añadir partida…'),
-    state.categories.filter(c => c.kind === 'expense' && !catIds.has(c.id)).map(c => h('option', { value: c.id }, c.icon + ' ' + c.name)));
-  addSel.addEventListener('change', () => {
-    if (!addSel.value) return;
-    const v = Number(prompt('Presupuesto para esta partida (€)', '100')) || 0;
-    if (v > 0) update(st => { const t = st.trips.find(x => x.id === trip.id); t.catBudgets = { ...(t.catBudgets || {}), [addSel.value]: v }; });
-    else addSel.value = '';
-  });
-  if (!rows.length) list.append(h('p', { class: 'small muted' }, 'Sin gastos todavía. Puedes fijar presupuestos por partida desde ya.'));
   const catBudgetTotal = rows.reduce((a, r) => a + r.budget, 0);
-  catCard.append(list, h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', gap: '8px', flexWrap: 'wrap' } },
-    addSel,
-    catBudgetTotal ? h('span', { class: 'small ' + (trip.budget && catBudgetTotal > trip.budget ? 'neg' : 'muted') }, `Partidas: ${money(catBudgetTotal, { decimals: false })}` + (trip.budget ? ` de ${money(trip.budget, { decimals: false })}` : '')) : null));
+  if (catBudgetTotal) catCard.append(list, h('div', { class: 'small ' + (trip.budget && catBudgetTotal > trip.budget ? 'neg' : 'muted'), style: { marginTop: '10px', textAlign: 'right' } },
+    `Partidas: ${money(catBudgetTotal, { decimals: false })}` + (trip.budget ? ` de ${money(trip.budget, { decimals: false })}` : '') + (trip.budget && catBudgetTotal < trip.budget ? ` · ${money(trip.budget - catBudgetTotal, { decimals: false })} sin asignar` : '')));
+  else catCard.append(list, h('p', { class: 'small muted', style: { margin: '10px 0 0' } }, 'Opcional: pon un presupuesto a cada partida.'));
   grid.append(catCard);
 
   // Suggestions
@@ -130,7 +123,7 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
   else {
     sugCard.append(h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Reservas hechas antes, pagos en otra divisa y compras en comercios que usas en casa durante esas fechas. ¿Son de este viaje?'));
     sugCard.append(h('div', { class: 'rows' }, cands.slice(0, 12).map(t => h('div', { class: 'row' },
-      catIcon(ctx.cats.get(t.categoryId), 30),
+      catIcon(TRIP_CAT_MAP.get(tripCategoryOf(t, ctx)), 30),
       h('div', { class: 'grow' }, h('div', { class: 'title' }, t.merchantName), h('div', { class: 'desc' }, dateLabel(t.date, true) + ' · ' + ({ home: 'comercio habitual en casa', booking: 'reserva de viaje', foreign: 'pago en ' + (t.tr?.originalCurrency || 'otra divisa') }[t._reason] || ''))),
       h('div', { class: 'amount' }, money(t.amount)),
       h('button', { class: 'btn sm', onclick: () => update(st => setTrip(st, [t.id], trip.id)) }, 'Añadir'),
@@ -139,7 +132,7 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
   grid.append(sugCard);
 
   // Transactions
-  const txCard = h('section', { class: 'card span-12' }, h('div', { class: 'card-head' }, h('h2', {}, 'Movimientos del viaje'), h('span', { class: 'meta' }, 'toca uno para cambiar su categoría')));
+  const txCard = h('section', { class: 'card span-12' }, h('div', { class: 'card-head' }, h('h2', {}, 'Movimientos del viaje'), h('span', { class: 'meta' }, 'toca uno para cambiar su partida')));
   if (!s.txs.length) txCard.append(h('p', { class: 'small muted' }, 'Cuando importes los extractos de esas fechas, los gastos aparecerán aquí.'));
   let lastDay = null;
   const box = h('div', {});
@@ -149,12 +142,12 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
       const d = daysBetween(trip.start, t.date) + 1;
       box.append(h('div', { class: 'day-head' }, h('span', {}, dateLabel(t.date, true) + (d >= 1 && d <= s.days ? ` · día ${d}` : ' · antes del viaje'))));
     }
-    const cat = t.categoryId ? ctx.cats.get(t.categoryId) : null;
+    const tc = TRIP_CAT_MAP.get(tripCategoryOf(t, ctx));
     box.append(h('div', { class: 'row' },
-      catIcon(cat),
-      h('div', { class: 'grow', style: { cursor: 'pointer' }, onclick: () => editTransaction(t.id) },
+      catIcon(tc),
+      h('div', { class: 'grow', style: { cursor: 'pointer' }, onclick: () => pickTripCategory(t, trip) },
         h('div', { class: 'title' }, t.merchantName),
-        h('div', { class: 'desc' }, t.status === 'pending' ? h('span', { class: 'tag warn' }, 'Por revisar') : (cat?.name || ''), t.tr?.originalCurrency && t.tr.originalCurrency !== 'EUR' ? ` · ${t.tr.originalAmount ? Math.abs(t.tr.originalAmount) + ' ' : ''}${t.tr.originalCurrency}` : '')),
+        h('div', { class: 'desc' }, tc.name, t.status === 'pending' ? ' · ' : '', t.status === 'pending' ? h('span', { class: 'tag warn' }, 'Por revisar') : '', t.tr?.originalCurrency && t.tr.originalCurrency !== 'EUR' ? ` · ${t.tr.originalAmount ? Math.abs(t.tr.originalAmount) + ' ' : ''}${t.tr.originalCurrency}` : '')),
       h('div', { class: 'amount ' + (t.amount > 0 ? 'pos' : '') }, money(t.amount, { sign: true })),
       h('button', { class: 'btn sm ghost icon', title: 'Quitar del viaje', onclick: () => { update(st => setTrip(st, [t.id], null)); toast('Quitado del viaje', { action: 'Deshacer', onAction: () => update(st => setTrip(st, [t.id], trip.id)) }); } }, '✕')));
   }
@@ -219,4 +212,24 @@ export function editTrip(id) {
     sheet.close();
     location.hash = '#/viajes';
   }
+}
+
+function pickTripCategory(t, trip) {
+  const ctx = buildContext(getState());
+  const current = tripCategoryOf(t, ctx);
+  const sheet = openSheet({
+    title: t.merchantName,
+    body: h('div', {},
+      h('div', { class: 'small muted', style: { marginBottom: '12px' } }, `${dateLabel(t.date, true)} · ${money(t.amount)} · ${t.description}`),
+      h('div', { class: 'chip-group-label', style: { marginTop: 0 } }, 'Partida del viaje'),
+      h('div', { class: 'chips' }, TRIP_CATEGORIES.map(c => h('button', {
+        class: 'chip' + (c.id === current ? ' on' : ''), type: 'button',
+        onclick: () => { update(s => setTripCategory(s, [t.id], c.id)); sheet.close(); },
+      }, h('span', { 'aria-hidden': 'true' }, c.icon), c.name))),
+      h('p', { class: 'small muted' }, 'Solo cambia cómo cuenta en este viaje; la categoría del mes no se toca.')),
+    foot: [
+      h('button', { class: 'btn ghost', style: { marginRight: 'auto' }, onclick: () => { sheet.close(); editTransaction(t.id); } }, 'Editar movimiento'),
+      h('button', { class: 'btn', onclick: () => sheet.close() }, 'Cerrar'),
+    ],
+  });
 }

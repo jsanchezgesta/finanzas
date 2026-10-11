@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultState } from '../js/defaults.js';
 import { buildContext } from '../js/analysis.js';
-import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates } from '../js/trips.js';
+import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates, tripCategoryOf, setTripCategory } from '../js/trips.js';
 
 let n = 0;
 const tx = (date, amount, categoryId, extra = {}) => ({ id: 't' + (++n), hash: 'h' + n, accountId: 'a', date, amount, description: extra.desc || 'X', merchant: extra.merchant || 'm' + n, merchantName: 'M', categoryId, status: 'confirmed', ...extra });
@@ -41,7 +41,8 @@ test('summary, candidates and manual add/remove', () => {
   assert.equal(sum.days, 5);
   assert.equal(sum.status, 'ongoing');
   assert.equal(sum.elapsed, 3);
-  assert.equal(sum.byCategory.restaurantes, 33);
+  assert.equal(sum.byCategory.comida, 33);
+  assert.equal(sum.byCategory.transporte, 20);
   assert.equal(sum.dailyBudget, 100);
 
   const cands = tripCandidates(s, trip, ctx).map(t => t.amount).sort((a, b) => a - b);
@@ -64,3 +65,24 @@ test('summary, candidates and manual add/remove', () => {
 });
 
 function round(v) { return Math.round(v * 100) / 100; }
+
+test('trip categories: derived from MCC, merchant name and monthly category; user override wins', () => {
+  const s = defaultState();
+  const ctx = buildContext(s);
+  const c = (o) => tripCategoryOf({ description: o.desc || '', merchantName: o.desc || '', categoryId: o.cat || null, tr: o.mcc ? { mcc: o.mcc } : undefined, tripCat: o.tripCat }, ctx);
+  assert.equal(c({ desc: 'VUELING AIRLINES', cat: 'viajes' }), 'vuelos');
+  assert.equal(c({ desc: 'BOOKING.COM HOTEL', cat: 'viajes' }), 'alojamiento');
+  assert.equal(c({ desc: 'AIRBNB PAYMENTS' }), 'alojamiento');
+  assert.equal(c({ desc: 'RENFE VIAJEROS', cat: 'transporte' }), 'transporte');
+  assert.equal(c({ desc: 'HERTZ RENT A CAR', cat: 'viajes' }), 'transporte');
+  assert.equal(c({ desc: 'DISHOOM', mcc: '5812' }), 'comida');
+  assert.equal(c({ desc: 'TFL TRAVEL CH', mcc: '4111' }), 'transporte');
+  assert.equal(c({ desc: 'SOME HOTEL', mcc: '7011' }), 'alojamiento');
+  assert.equal(c({ desc: 'MUSEO PRADO', cat: 'ocio' }), 'actividades');
+  assert.equal(c({ desc: 'MERCADONA', cat: 'supermercado' }), 'comida');
+  assert.equal(c({ desc: 'ZARA', cat: 'compras' }), 'otros');
+  assert.equal(c({ desc: 'ZARA', cat: 'compras', tripCat: 'actividades' }), 'actividades');
+  const t = { id: 'x', description: 'ZARA' }; s.transactions = [t];
+  setTripCategory(s, ['x'], 'comida');
+  assert.equal(t.tripCat, 'comida');
+});

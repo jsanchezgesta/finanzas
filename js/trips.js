@@ -7,6 +7,51 @@
 //                then leaves it alone
 
 import { natureOf } from './analysis.js';
+import { cleanDescription } from './merchant.js';
+
+// Trip-only categories, independent of the monthly ones.
+export const TRIP_CATEGORIES = [
+  { id: 'vuelos', name: 'Vuelos', icon: '✈️', color: '#2a9dc4' },
+  { id: 'alojamiento', name: 'Alojamiento', icon: '🏨', color: '#7b6bb0' },
+  { id: 'transporte', name: 'Transporte', icon: '🚕', color: '#4a7f9e' },
+  { id: 'comida', name: 'Comida', icon: '🍽️', color: '#e07a5f' },
+  { id: 'actividades', name: 'Actividades', icon: '🎟️', color: '#c06c84' },
+  { id: 'otros', name: 'Otros', icon: '🧳', color: '#a0a6ad' },
+];
+const TRIP_CAT_IDS = new Set(TRIP_CATEGORIES.map(c => c.id));
+
+const FLIGHT = /RYANAIR|VUELING|IBERIA|EASYJET|WIZZ|AIR EUROPA|LEVEL|TAP AIR|LUFTHANSA|KLM|AIR FRANCE|BRITISH AIRWAYS|TRANSAVIA|BINTER|VOLOTEA|EUROWINGS|TURKISH|EMIRATES|QATAR|AIRLINE|AIRWAYS|AEROLINEA|SKYSCANNER|KIWI.COM|EDREAMS|LASTMINUTE/;
+const STAY = /HOTEL|HOSTAL|HOSTEL|BOOKING|AIRBNB|EXPEDIA|APARTAMENT|APARTMENT|B&B|GUEST ?HOUSE|POSADA|RESORT|PARADOR|AGODA|HOTELS\.COM|VRBO|CAMPING/;
+const MOVE = /RENFE|OUIGO|IRYO|TRAINLINE|TRENITALIA|SNCF|DB BAHN|ALSA|FLIXBUS|BLABLACAR|UBER|CABIFY|BOLT|TAXI|FREENOW|HERTZ|AVIS|SIXT|EUROPCAR|GOLDCAR|ENTERPRISE|METRO|TFL|BUS|FERRY|PEAJE|PARKING|GASOLIN|REPSOL|CEPSA|SHELL|EXPRESS/;
+
+function mccNum(t) { const n = parseInt(t.tr?.mcc, 10); return isFinite(n) ? n : null; }
+
+// Trip category for a transaction: the user's choice, or derived from the
+// merchant code, the merchant name and its monthly category.
+export function tripCategoryOf(t, ctx) {
+  if (t.tripCat && TRIP_CAT_IDS.has(t.tripCat)) return t.tripCat;
+  const text = cleanDescription(t.description + ' ' + (t.merchantName || ''));
+  const mcc = mccNum(t);
+  if (mcc != null) {
+    if ((mcc >= 3000 && mcc <= 3350) || mcc === 4511 || mcc === 4582) return 'vuelos';
+    if ((mcc >= 3501 && mcc <= 3999) || mcc === 7011 || mcc === 7012 || mcc === 7032 || mcc === 7033) return 'alojamiento';
+    if ((mcc >= 4111 && mcc <= 4131) || mcc === 4411 || mcc === 4784 || (mcc >= 3351 && mcc <= 3500) || (mcc >= 7512 && mcc <= 7519) || mcc === 5541 || mcc === 5542 || mcc === 7523) return 'transporte';
+    if ((mcc >= 5811 && mcc <= 5814) || mcc === 5411 || mcc === 5499 || mcc === 5462 || mcc === 5441 || mcc === 5422) return 'comida';
+    if (mcc === 7991 || mcc === 7996 || mcc === 7998 || mcc === 7999 || mcc === 7922 || mcc === 7929 || mcc === 7832 || mcc === 7941 || mcc === 4722 || mcc === 5942) return 'actividades';
+  }
+  if (FLIGHT.test(text)) return 'vuelos';
+  if (STAY.test(text)) return 'alojamiento';
+  const cat = t.categoryId;
+  if (['restaurantes', 'delivery', 'supermercado'].includes(cat)) return 'comida';
+  if (cat === 'transporte' || MOVE.test(text)) return 'transporte';
+  if (['ocio', 'deporte', 'cuidado', 'formacion'].includes(cat)) return 'actividades';
+  return 'otros';
+}
+
+export function setTripCategory(state, txIds, tripCat) {
+  const ids = new Set(txIds);
+  for (const t of state.transactions) if (ids.has(t.id)) t.tripCat = tripCat || null;
+}
 import { daysBetween, addDays, round2, uid } from './util.js';
 
 export function newTrip({ name, start, end, budget = 0, catBudgets = {}, emoji = '✈️' }) {
@@ -77,7 +122,7 @@ export function tripSummary(state, trip, ctx, today = new Date().toISOString().s
     const v = -t.amount;
     spent += v;
     if (t.date < trip.start) before += v;
-    const k = t.categoryId || '_none';
+    const k = tripCategoryOf(t, ctx);
     byCategory[k] = (byCategory[k] || 0) + v;
   }
   const days = daysBetween(trip.start, trip.end) + 1;
@@ -107,7 +152,7 @@ export function tripCandidates(state, trip, ctx) {
     if (t.tripId || t.date < from || t.date > to) return false;
     if (t.tripManual) return false; // user removed it on purpose
     if (t.amount >= 0) return false;
-    const travel = t.categoryId === 'viajes';
+    const travel = t.categoryId === 'viajes' || ['vuelos', 'alojamiento'].includes(tripCategoryOf(t, ctx));
     const foreign = isForeign(t) && t.date >= addDays(trip.start, -3);
     const inDatesHome = t.date >= trip.start && t.date <= trip.end && home.has(t.merchant) && eligible({ ...t, merchant: '' }, ctx, null);
     if (inDatesHome) { t._reason = 'home'; return true; }
