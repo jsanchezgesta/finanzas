@@ -86,3 +86,37 @@ test('trip categories: derived from MCC, merchant name and monthly category; use
   setTripCategory(s, ['x'], 'comida');
   assert.equal(t.tripCat, 'comida');
 });
+
+test('planned payments: pending, paid outside, linked to a movement without double counting', async () => {
+  const { addTripItem, updateTripItem } = await import('../js/trips.js');
+  const s = defaultState();
+  s.transactions = [tx('2026-06-02', -45, 'restaurantes'), tx('2026-05-01', -300, 'viajes', { desc: 'HOTEL TIRANA', merchant: 'hotel tirana' })];
+  s.trips = [newTrip({ name: 'Albania', start: '2026-06-01', end: '2026-06-10', budget: 1000 })];
+  const trip = s.trips[0];
+  assignTrips(s, buildContext(s));
+  const hotel = addTripItem(s, trip.id, { name: 'Hotel Tirana', tripCat: 'alojamiento', amount: 300 });
+  addTripItem(s, trip.id, { name: 'Excursión', tripCat: 'actividades', amount: 80 });
+  const tour2 = addTripItem(s, trip.id, { name: 'Clases de buceo', tripCat: 'actividades', amount: 150, paid: true }); // paid in cash
+  let sum = tripSummary(s, trip, buildContext(s), '2026-05-20');
+  assert.equal(sum.pending, 380);
+  assert.equal(sum.paidOutside, 150);
+  assert.equal(sum.spent, 45 + 150);
+  assert.equal(sum.remaining, 1000 - 195 - 380);
+  assert.equal(sum.pendingByCategory.actividades, 80);
+
+  // Hotel gets paid and the booking is added to the trip: linked, counted once.
+  updateTripItem(s, trip.id, hotel.id, { paid: true });
+  setTrip(s, [s.transactions[1].id], trip.id);
+  sum = tripSummary(s, trip, buildContext(s), '2026-05-20');
+  assert.equal(sum.items.find(i => i.id === hotel.id).linkedTx.amount, -300);
+  assert.equal(sum.pending, 80);
+  assert.equal(sum.spent, 45 + 300 + 150);
+  assert.equal(sum.byCategory.alojamiento, 300);
+  assert.ok(tour2);
+});
+
+test('prepaid travel costs go to Otros y prepagos', () => {
+  const ctx = buildContext(defaultState());
+  assert.equal(tripCategoryOf({ description: 'IATI SEGUROS SEGURO DE VIAJE', merchantName: '', categoryId: 'seguros' }, ctx), 'otros');
+  assert.equal(tripCategoryOf({ description: 'HOLAFLY ESIM', merchantName: '', categoryId: 'telefonia' }, ctx), 'otros');
+});

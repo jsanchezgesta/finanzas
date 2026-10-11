@@ -158,6 +158,12 @@ export function loadSample(state) {
 function sampleTrip(state, londonStart) {
   state.trips = state.trips || [];
   state.trips.push({ ...newTrip({ name: 'Londres', emoji: '🇬🇧', start: londonStart, end: addDays(londonStart, 3), budget: 900, catBudgets: { vuelos: 250, alojamiento: 380, comida: 150, transporte: 80, actividades: 40 } }), sample: true });
+  const trip = state.trips[state.trips.length - 1];
+  trip.items = [
+    { id: uid(), name: 'Hotel (Booking)', tripCat: 'alojamiento', amount: 362, paid: true, txId: null },
+    { id: uid(), name: 'Seguro de viaje', tripCat: 'otros', amount: 24, paid: true, txId: null },
+    { id: uid(), name: 'Musical West End', tripCat: 'actividades', amount: 85, paid: false, txId: null },
+  ];
   assignTrips(state, buildContext(state));
 }
 

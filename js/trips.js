@@ -16,13 +16,16 @@ export const TRIP_CATEGORIES = [
   { id: 'transporte', name: 'Transporte', icon: '🚕', color: '#4a7f9e' },
   { id: 'comida', name: 'Comida', icon: '🍽️', color: '#e07a5f' },
   { id: 'actividades', name: 'Actividades', icon: '🎟️', color: '#c06c84' },
-  { id: 'otros', name: 'Otros', icon: '🧳', color: '#a0a6ad' },
+  { id: 'otros', name: 'Otros y prepagos', icon: '🧳', color: '#a0a6ad' },
 ];
 const TRIP_CAT_IDS = new Set(TRIP_CATEGORIES.map(c => c.id));
 
 const FLIGHT = /RYANAIR|VUELING|IBERIA|EASYJET|WIZZ|AIR EUROPA|LEVEL|TAP AIR|LUFTHANSA|KLM|AIR FRANCE|BRITISH AIRWAYS|TRANSAVIA|BINTER|VOLOTEA|EUROWINGS|TURKISH|EMIRATES|QATAR|AIRLINE|AIRWAYS|AEROLINEA|SKYSCANNER|KIWI.COM|EDREAMS|LASTMINUTE/;
 const STAY = /HOTEL|HOSTAL|HOSTEL|BOOKING|AIRBNB|EXPEDIA|APARTAMENT|APARTMENT|B&B|GUEST ?HOUSE|POSADA|RESORT|PARADOR|AGODA|HOTELS\.COM|VRBO|CAMPING/;
 const MOVE = /RENFE|OUIGO|IRYO|TRAINLINE|TRENITALIA|SNCF|DB BAHN|ALSA|FLIXBUS|BLABLACAR|UBER|CABIFY|BOLT|TAXI|FREENOW|HERTZ|AVIS|SIXT|EUROPCAR|GOLDCAR|ENTERPRISE|METRO|TFL|BUS|FERRY|PEAJE|PARKING|GASOLIN|REPSOL|CEPSA|SHELL|EXPRESS/;
+
+// Travel insurance, visas, eSIMs, vaccines: paid before the trip.
+const PREPAID = /SEGURO (DE )?VIAJE|TRAVEL INSURANCE|IATI|HEYMONDO|CHAPKA|INTERMUNDIAL|MONDO|VISA (FEE|APPLICATION)|VISADO|EVISA|E-VISA|ESTA |ETIAS|ETA UK|HOLAFLY|AIRALO|UBIGI|NOMAD ESIM|ESIM|VACUNA|VACCIN|SANIDAD EXTERIOR/;
 
 function mccNum(t) { const n = parseInt(t.tr?.mcc, 10); return isFinite(n) ? n : null; }
 
@@ -39,6 +42,7 @@ export function tripCategoryOf(t, ctx) {
     if ((mcc >= 5811 && mcc <= 5814) || mcc === 5411 || mcc === 5499 || mcc === 5462 || mcc === 5441 || mcc === 5422) return 'comida';
     if (mcc === 7991 || mcc === 7996 || mcc === 7998 || mcc === 7999 || mcc === 7922 || mcc === 7929 || mcc === 7832 || mcc === 7941 || mcc === 4722 || mcc === 5942) return 'actividades';
   }
+  if (PREPAID.test(text)) return 'otros';
   if (FLIGHT.test(text)) return 'vuelos';
   if (STAY.test(text)) return 'alojamiento';
   const cat = t.categoryId;
@@ -114,10 +118,30 @@ export function tripTransactions(state, tripId) {
   return state.transactions.filter(t => t.tripId === tripId).sort((a, b) => b.date.localeCompare(a.date));
 }
 
+// Planned payments ("pagos previstos") on a trip:
+//   { id, name, tripCat, amount, paid, txId }
+// A paid item linked to an imported movement isn't counted twice. A paid item
+// without a link is matched to a trip movement of about the same amount; if
+// none matches it counts as paid outside your accounts (cash, someone else's card).
+function matchItems(trip, txs) {
+  const used = new Set();
+  const links = new Map();
+  for (const it of trip.items || []) {
+    if (it.txId && txs.some(t => t.id === it.txId)) { used.add(it.txId); links.set(it.id, it.txId); }
+  }
+  for (const it of trip.items || []) {
+    if (!it.paid || links.has(it.id)) continue;
+    const m = txs.find(t => !used.has(t.id) && Math.abs(-t.amount - it.amount) <= Math.max(1, it.amount * 0.02));
+    if (m) { used.add(m.id); links.set(it.id, m.id); }
+  }
+  return links;
+}
+
 export function tripSummary(state, trip, ctx, today = new Date().toISOString().slice(0, 10)) {
   const txs = tripTransactions(state, trip.id);
   const byCategory = {};
-  let spent = 0, before = 0;
+  const pendingByCategory = {};
+  let spent = 0, before = 0, pending = 0, paidOutside = 0;
   for (const t of txs) {
     const v = -t.amount;
     spent += v;
@@ -125,21 +149,51 @@ export function tripSummary(state, trip, ctx, today = new Date().toISOString().s
     const k = tripCategoryOf(t, ctx);
     byCategory[k] = (byCategory[k] || 0) + v;
   }
+  const links = matchItems(trip, txs);
+  const items = (trip.items || []).map(it => {
+    const linkedTx = links.has(it.id) ? txs.find(t => t.id === links.get(it.id)) : null;
+    const k = it.tripCat || 'otros';
+    if (!it.paid) { pending += it.amount; pendingByCategory[k] = (pendingByCategory[k] || 0) + it.amount; }
+    else if (!linkedTx) { paidOutside += it.amount; spent += it.amount; before += it.amount; byCategory[k] = (byCategory[k] || 0) + it.amount; }
+    return { ...it, linkedTx };
+  });
   const days = daysBetween(trip.start, trip.end) + 1;
   const status = today < trip.start ? 'upcoming' : today > trip.end ? 'done' : 'ongoing';
   const elapsed = status === 'upcoming' ? 0 : status === 'done' ? days : daysBetween(trip.start, today) + 1;
   const onTrip = spent - before; // spend during the trip itself, without advance bookings
   const perDay = elapsed ? onTrip / elapsed : 0;
-  const projected = status === 'ongoing' ? before + perDay * days : spent;
+  const projected = status === 'ongoing' ? before + pending + perDay * days : spent + pending;
+  const r2 = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, round2(v)]));
   return {
-    trip, txs, count: txs.length, status, days, elapsed,
-    spent: round2(spent), before: round2(before),
-    remaining: round2(trip.budget - spent),
+    trip, txs, items, count: txs.length, status, days, elapsed,
+    spent: round2(spent), before: round2(before), pending: round2(pending), paidOutside: round2(paidOutside),
+    committed: round2(spent + pending),
+    remaining: round2(trip.budget - spent - pending),
     dailyBudget: trip.budget ? round2(trip.budget / days) : 0,
     perDay: round2(perDay),
     projected: round2(projected),
-    byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, round2(v)])),
+    byCategory: r2(byCategory),
+    pendingByCategory: r2(pendingByCategory),
   };
+}
+
+export function addTripItem(state, tripId, { name, tripCat = 'otros', amount, paid = false }) {
+  const t = state.trips.find(x => x.id === tripId);
+  t.items = t.items || [];
+  const item = { id: uid(), name, tripCat, amount: round2(Number(amount) || 0), paid, txId: null };
+  t.items.push(item);
+  return item;
+}
+
+export function updateTripItem(state, tripId, itemId, patch) {
+  const t = state.trips.find(x => x.id === tripId);
+  const it = t?.items?.find(i => i.id === itemId);
+  if (it) Object.assign(it, patch);
+}
+
+export function removeTripItem(state, tripId, itemId) {
+  const t = state.trips.find(x => x.id === tripId);
+  if (t) t.items = (t.items || []).filter(i => i.id !== itemId);
 }
 
 // Expenses that look like they belong to the trip but weren't auto-assigned:
