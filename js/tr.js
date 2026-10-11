@@ -120,6 +120,8 @@ export function trRowsToTransactions(data, cols) {
         fee: fee || 0,
         tax: tax || 0,
         mcc: String(get(r, 'mcc_code') || '').trim() || null,
+        originalCurrency: String(get(r, 'original_currency') || '').trim().toUpperCase() || null,
+        originalAmount: num(r, 'original_amount') || null,
       },
     });
   }

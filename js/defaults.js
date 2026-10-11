@@ -83,6 +83,7 @@ export function defaultState() {
     transactions: [],
     imports: [],
     budgets: {},
+    trips: [],
     settings: {
       oneOffThreshold: 150,
       savingsGoalRate: 0.2,

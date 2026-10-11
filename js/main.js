@@ -8,6 +8,7 @@ import * as plan from './views/plan.js';
 import * as importer from './views/import.js';
 import * as settings from './views/settings.js';
 import * as inversion from './views/invest.js';
+import * as viajes from './views/trips.js';
 
 const routes = {
   resumen: dashboard,
@@ -15,6 +16,7 @@ const routes = {
   revisar: review,
   plan,
   inversion,
+  viajes,
   importar: importer,
   ajustes: settings,
 };
@@ -57,7 +59,7 @@ function render({ keepScroll = false } = {}) {
   current = { route, view };
   clear(main);
   view.render(main, { state: getState(), ctx: getContext(), params, navigate });
-  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === route));
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (route === 'viajes' ? 'plan' : route)));
   if (keepScroll && same) {
     window.scrollTo(0, scroll);
     if (focusKey) main.querySelector(`[aria-label="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });

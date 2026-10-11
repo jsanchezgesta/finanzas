@@ -5,13 +5,14 @@ import { update, getState } from '../store.js';
 import { confirmCategory } from '../categorize.js';
 import { cleanDescription } from '../merchant.js';
 import { setParams, getContext } from '../main.js';
+import { setTrip } from '../trips.js';
 
 const PAGE = 150;
 
 export function render(root, { state, ctx, params }) {
   const f = {
     q: params.q || '', exact: params.exact === '1', m: params.m || '', cat: params.cat || '',
-    nat: params.nat || '', acc: params.acc || '', st: params.st || '',
+    nat: params.nat || '', acc: params.acc || '', st: params.st || '', trip: params.trip || '',
   };
   let limit = PAGE;
 
@@ -34,6 +35,7 @@ export function render(root, { state, ctx, params }) {
     sel('nat', [['', 'Cualquier tipo'], ...['fixed', 'variable', 'oneoff', 'investment', 'income', 'transfer'].map(n => [n, NATURE_LABELS[n]])]),
     state.accounts.length > 1 ? sel('acc', [['', 'Todas las cuentas'], ...state.accounts.map(a => [a.id, a.name])]) : null,
     sel('st', [['', 'Todos'], ['pending', 'Por revisar'], ['auto', 'Automáticos'], ['confirmed', 'Confirmados']]),
+    state.trips?.length ? sel('trip', [['', 'Con y sin viaje'], ['_any', 'Solo viajes'], ['_none', 'Sin viaje'], ...state.trips.map(t => [t.id, (t.emoji || '✈️') + ' ' + t.name])]) : null,
   );
   const list = h('div', { class: 'card', style: { paddingTop: '4px' } });
   root.append(filters, list);
@@ -43,6 +45,7 @@ export function render(root, { state, ctx, params }) {
     if (f.cat === '_none' ? t.categoryId : f.cat && t.categoryId !== f.cat) return false;
     if (f.acc && t.accountId !== f.acc) return false;
     if (f.st && t.status !== f.st) return false;
+    if (f.trip === '_any' ? !t.tripId : f.trip === '_none' ? t.tripId : f.trip && t.tripId !== f.trip) return false;
     if (f.nat && natureOf(t, ctx) !== f.nat) return false;
     if (f.q) {
       if (f.exact) return t.merchant === f.q;
@@ -52,8 +55,11 @@ export function render(root, { state, ctx, params }) {
     return true;
   }
 
+  const tripMap = new Map((state.trips || []).map(t => [t.id, (t.emoji || '✈️') + ' ' + t.name]));
+  const tripName = id => tripMap.get(id) || '';
+
   function refresh() {
-    setParams({ q: f.q, exact: f.exact ? '1' : '', m: f.m, cat: f.cat, nat: f.nat, acc: f.acc, st: f.st });
+    setParams({ q: f.q, exact: f.exact ? '1' : '', m: f.m, cat: f.cat, nat: f.nat, acc: f.acc, st: f.st, trip: f.trip });
     if (f.exact && search.value !== (getState().transactions.find(t => t.merchant === f.q)?.merchantName || f.q)) {
       search.value = getState().transactions.find(t => t.merchant === f.q)?.merchantName || f.q;
     }
@@ -83,6 +89,7 @@ export function render(root, { state, ctx, params }) {
             t.status === 'pending' ? h('span', { class: 'tag warn' }, 'Por revisar') : (cat?.name || ''),
             ['fixed', 'oneoff'].includes(nature) ? ' · ' + NATURE_LABELS[nature] : '',
             accounts.size > 1 ? ' · ' + (accounts.get(t.accountId) || '') : '',
+            t.tripId ? ' · ' + (tripName(t.tripId)) : '',
             t.note ? ' · ' + t.note : '')),
         h('div', { class: 'amount ' + (t.amount > 0 ? 'pos' : '') }, money(t.amount, { sign: true }))));
     }
@@ -124,12 +131,16 @@ export function editTransaction(id) {
   drawPicker(); drawNature();
 
   const note = h('input', { type: 'text', placeholder: 'Nota (opcional)', value: t.note || '', style: { width: '100%' } });
+  const trips = [...(state.trips || [])].sort((a, b) => b.start.localeCompare(a.start));
+  const tripSel = trips.length ? h('select', { style: { width: '100%' } }, h('option', { value: '' }, 'Ninguno'), trips.map(tr => h('option', { value: tr.id }, (tr.emoji || '✈️') + ' ' + tr.name))) : null;
+  if (tripSel) tripSel.value = t.tripId || '';
   const body = h('div', {},
     h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' } },
       h('div', {}, h('div', { style: { fontSize: '20px', fontWeight: 700 } }, t.merchantName), h('div', { class: 'small muted' }, dateLabel(t.date, true) + (account ? ' · ' + account.name : ''))),
       h('div', { class: 'amount ' + (t.amount > 0 ? 'pos' : ''), style: { fontSize: '20px', fontWeight: 700 } }, money(t.amount, { sign: true }))),
     h('div', { class: 'small', style: { color: 'var(--ink-2)', margin: '8px 0 4px', wordBreak: 'break-word' } }, t.description),
     h('div', { class: 'chip-group-label' }, 'Categoría'), pickerBox, natureBox,
+    tripSel ? [h('div', { class: 'chip-group-label' }, 'Viaje'), tripSel] : null,
     h('div', { class: 'chip-group-label' }, 'Nota'), note,
     h('div', { class: 'review-options', style: { flexDirection: 'column', alignItems: 'flex-start' } },
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: true, onchange: e => { remember = e.target.checked; } }), `Recordar para futuros movimientos de «${t.merchantName}»`),
@@ -149,6 +160,7 @@ export function editTransaction(id) {
     update(s => {
       const tx = s.transactions.find(x => x.id === id);
       tx.note = note.value.trim();
+      if (tripSel && (tripSel.value || null) !== (tx.tripId || null)) setTrip(s, [id], tripSel.value || null);
       if (categoryId) confirmCategory(s, [id], categoryId, { remember, applyToPast, nature: nature || null });
     });
     sheet.close();

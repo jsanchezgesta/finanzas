@@ -6,6 +6,8 @@ import { parseCSV, analyzeRows } from './parse.js';
 import { buildImport, commitImport } from './importer.js';
 import { reviewGroups, confirmCategory } from './categorize.js';
 import { uid, addDays } from './util.js';
+import { newTrip, assignTrips } from './trips.js';
+import { buildContext } from './analysis.js';
 
 function rng(seed) {
   return () => {
@@ -98,6 +100,18 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
     else tr.push({ date: d, category: 'CASH', type: a, name: b, amount: amt, mcc: '4511' });
   }
 
+  // A 4-day trip to London paid with the TR card in GBP (flight and hotel were
+  // booked earlier from CaixaBank: the VUELING and BOOKING one-offs above).
+  const londonStart = addDays(start, 140);
+  if (addDays(londonStart, 3) <= today) {
+    const spends = [[0, 'PRET A MANGER', 9.4, '5814'], [0, 'TFL TRAVEL CH', 14.2, '4111'], [1, 'DISHOOM COVENT GARDEN', 52.3, '5812'], [1, 'BRITISH MUSEUM SHOP', 18, '5942'],
+      [2, 'BOROUGH MARKET', 21.5, '5499'], [2, 'TFL TRAVEL CH', 11.6, '4111'], [2, 'THE HARP PUB', 23.8, '5813'], [3, 'HEATHROW EXPRESS', 25, '4111']];
+    for (const [off, name, gbp, mcc] of spends) {
+      const eur = Math.round(gbp * 1.17 * 100) / 100;
+      tr.push({ date: addDays(londonStart, off), category: 'CASH', type: 'CARD_TRANSACTION_INTERNATIONAL', name, amount: -eur, mcc, origAmt: -gbp, origCur: 'GBP' });
+    }
+  }
+
   caixa.sort((a, b) => b[0].localeCompare(a[0]));
   tr.sort((a, b) => a.date.localeCompare(b.date));
   let saldo = 4210.33;
@@ -107,15 +121,15 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
   const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const trCSV = TR_HEADER.join(',') + '\n' + tr.map((o, i) => [
     o.date + 'T10:' + String(i % 60).padStart(2, '0') + ':00.000000Z', o.date, 'DEFAULT', o.category, o.type, o.assetClass || '', o.name || '', o.symbol || '',
-    o.shares ? o.shares.toFixed(6) : '', o.price ? o.price.toFixed(4) : '', (o.amount ?? 0).toFixed(2), '', '', 'EUR', '', '', '', o.description || '',
+    o.shares ? o.shares.toFixed(6) : '', o.price ? o.price.toFixed(4) : '', (o.amount ?? 0).toFixed(2), '', '', 'EUR', o.origAmt ? o.origAmt.toFixed(2) : '', o.origCur || '', '', o.description || '',
     'tx-' + o.date.replace(/-/g, '') + '-' + String(i).padStart(4, '0'), o.counterparty || '', '', o.reference || '', o.mcc || '',
   ].map(q).join(',')).join('\n') + '\n';
-  return { caixaCSV, trCSV };
+  return { caixaCSV, trCSV, londonStart };
 }
 
 export function loadSample(state) {
   removeSample(state);
-  const { caixaCSV, trCSV } = sampleCSVs();
+  const { caixaCSV, trCSV, londonStart } = sampleCSVs();
   const files = [['ejemplo-caixabank.csv', 'CaixaBank (ejemplo)', 'CaixaBank', caixaCSV], ['ejemplo-trade-republic.csv', 'Trade Republic (ejemplo)', 'Trade Republic', trCSV]];
   for (const [fileName, name, bank, csv] of files) {
     const accountId = uid();
@@ -134,6 +148,13 @@ export function loadSample(state) {
     const cat = g.suggestion || manual[g.merchant] || (g.total > 0 ? 'ingresos-otros' : 'otros');
     confirmCategory(state, g.txs.map(t => t.id), cat, { remember: true });
   }
+  sampleTrip(state, londonStart);
+}
+
+function sampleTrip(state, londonStart) {
+  state.trips = state.trips || [];
+  state.trips.push({ ...newTrip({ name: 'Londres', emoji: '🇬🇧', start: londonStart, end: addDays(londonStart, 3), budget: 900, catBudgets: { viajes: 600, restaurantes: 150, transporte: 80 } }), sample: true });
+  assignTrips(state, buildContext(state));
 }
 
 export function removeSample(state) {
@@ -142,6 +163,7 @@ export function removeSample(state) {
   state.transactions = state.transactions.filter(t => !ids.has(t.accountId));
   state.imports = state.imports.filter(i => !ids.has(i.accountId));
   state.accounts = state.accounts.filter(a => !ids.has(a.id));
+  state.trips = (state.trips || []).filter(t => !t.sample);
   // Remove rules that only existed because of the sample.
   const merchants = new Set(state.transactions.map(t => t.merchant));
   state.rules = state.rules.filter(r => r.type !== 'merchant' || merchants.has(r.match));

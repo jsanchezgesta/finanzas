@@ -4,6 +4,8 @@ import { decodeBytes, parseCSV, analyzeRows, rowsToTransactions } from './parse.
 import { normalizeMerchant, cleanDescription } from './merchant.js';
 import { categorizeNew, detectTransfers } from './categorize.js';
 import { uid } from './util.js';
+import { buildContext } from './analysis.js';
+import { assignTrips } from './trips.js';
 
 const SHEETJS_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
 
@@ -107,6 +109,7 @@ export function commitImport(state, { fresh, dupes, skipped }, { fileName, accou
   state.transactions.push(...fresh);
   state.transactions.sort((a, b) => b.date.localeCompare(a.date));
   const transfers = detectTransfers(state.transactions);
+  if (state.trips?.length) assignTrips(state, buildContext(state));
   if (saveProfile && signature) state.importProfiles[signature] = { mapping, accountId, updatedAt: Date.now() };
   const auto = fresh.filter(t => t.status === 'auto').length;
   const record = {

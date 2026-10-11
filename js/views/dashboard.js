@@ -4,6 +4,7 @@ import { donut, stackedBars } from '../charts.js';
 import { catIcon, emptyState } from '../ui.js';
 import { loadSample } from '../sample.js';
 import { update } from '../store.js';
+import { tripsInMonths } from '../trips.js';
 
 export function render(root, { state, ctx, params, navigate }) {
   if (!state.transactions.length) {
@@ -176,6 +177,22 @@ export function render(root, { state, ctx, params, navigate }) {
   }
   ooCard.append(ooList);
   grid.append(ooCard);
+
+  // ---------- trips ----------
+  const tripSpend = tripsInMonths(state, months);
+  if (tripSpend.size) {
+    const tripTotal = [...tripSpend.values()].reduce((a, b) => a + b, 0);
+    grid.append(h('section', { class: 'card span-12' },
+      h('div', { class: 'card-head' }, h('h2', {}, 'Viajes en este periodo'), h('span', { class: 'meta' }, money(tripTotal, { decimals: false }) + ' · ' + pct(tripTotal / (total.expense || 1)) + ' del gasto')),
+      h('div', { class: 'rows' }, [...tripSpend.entries()].map(([id, v]) => {
+        const tr = state.trips.find(t => t.id === id);
+        if (!tr) return null;
+        return h('a', { class: 'row click', href: '#/viajes?id=' + id, style: { color: 'inherit', textDecoration: 'none' } },
+          h('span', { style: { fontSize: '22px' } }, tr.emoji || '✈️'),
+          h('div', { class: 'grow' }, h('div', { class: 'title' }, tr.name), h('div', { class: 'desc' }, `${dateLabel(tr.start)} – ${dateLabel(tr.end)}`)),
+          h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), tr.budget ? h('div', { class: 'small muted' }, 'presupuesto ' + money(tr.budget, { decimals: false })) : null));
+      }))));
+  }
 
   // ---------- top merchants ----------
   const merchants = Object.entries(total.byMerchant).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);

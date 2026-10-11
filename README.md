@@ -27,6 +27,8 @@ The dashboard shows income, spending, invested amount and savings rate; a 12-mon
 
 **Inversión.** Contributions per month (own money, round-ups, Saveback), interest and dividends earned, and positions per asset (shares, invested, approximate value at the last price seen in your exports). A Saveback tracker shows this month's TR card spend against the 1,500 € cap, the Saveback you're generating, whether your savings plans meet the 50 €/month condition, and how much Saveback you left on the table by paying with other banks' cards. Saveback terms are editable in Ajustes.
 
+**Viajes.** A trip has dates, a total budget and optional budgets per category. Expenses inside the dates are assigned automatically, except fixed bills, income, investments and merchants you use regularly at home (those are suggested instead, unless paid in a foreign currency). Flights and hotels booked up to 4 months earlier, and foreign-currency payments near the dates, appear as one-tap suggestions. The trip view shows budget vs spent, daily spend vs the daily budget, a projection while the trip is ongoing, and spend per category against its budget. Any movement can be moved in or out of a trip from its detail sheet.
+
 **Plan.** Zero-based monthly budget: expected income, then every euro assigned, savings first. Prefills from your 3-month average, shows plan vs. actual per category.
 
 ## Run locally
@@ -59,8 +61,9 @@ Everything stays in the browser where you use the app. Phone and laptop each hav
 | `js/analysis.js` | Recurring detection, spend nature, monthly aggregates |
 | `js/tr.js`, `js/mcc.js` | Trade Republic export reader, MCC → category |
 | `js/invest.js` | Investment summary, positions, Saveback status |
+| `js/trips.js` | Trip assignment, summaries and suggestions |
 | `js/defaults.js` | Default categories and keyword hints |
 | `js/store.js` | State and persistence (IndexedDB) |
-| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Inversión, Importar, Ajustes |
+| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Viajes, Inversión, Importar, Ajustes |
 
 See [ROADMAP.md](ROADMAP.md) for phase 2 (finding savings).

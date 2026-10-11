@@ -5,6 +5,7 @@ import { h, money, pct, monthLabel, addMonths, monthRange, currentMonth, round2 
 import { summarize, categoryAverages, latestMonth, monthsWithData } from '../analysis.js';
 import { catIcon, emptyState, toast } from '../ui.js';
 import { update } from '../store.js';
+import { planTabs } from './trips.js';
 
 export function render(root, { state, ctx, params, navigate }) {
   const latest = latestMonth(state);
@@ -12,10 +13,10 @@ export function render(root, { state, ctx, params, navigate }) {
 
   root.append(h('div', { class: 'page-head' },
     h('div', {}, h('h1', {}, 'Plan'), h('div', { class: 'sub' }, 'Presupuesto base cero: asigna cada euro antes de gastarlo.')),
-    h('div', { class: 'period' },
+    h('div', { class: 'btn-row' }, planTabs('plan'), h('div', { class: 'period' },
       h('button', { class: 'btn icon', 'aria-label': 'Mes anterior', onclick: () => navigate('plan', { m: addMonths(month, -1) }) }, '‹'),
       h('div', { class: 'label' }, monthLabel(month, true)),
-      h('button', { class: 'btn icon', 'aria-label': 'Mes siguiente', onclick: () => navigate('plan', { m: addMonths(month, 1) }) }, '›'))));
+      h('button', { class: 'btn icon', 'aria-label': 'Mes siguiente', onclick: () => navigate('plan', { m: addMonths(month, 1) }) }, '›')))));
 
   if (!state.transactions.length) {
     root.append(emptyState({ title: 'Primero, importa algunos movimientos', text: 'Con tu historial puedo proponerte un plan a partir de lo que gastas de media.', actions: [h('a', { class: 'btn primary', href: '#/importar' }, 'Importar extracto')] }));
