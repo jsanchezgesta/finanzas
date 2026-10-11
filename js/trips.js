@@ -52,6 +52,13 @@ export function tripCategoryOf(t, ctx) {
   return 'otros';
 }
 
+// The trip budget is the sum of its category budgets when any are set;
+// otherwise the total typed when creating the trip.
+export function tripBudget(trip) {
+  const sum = Object.values(trip.catBudgets || {}).reduce((a, v) => a + (Number(v) || 0), 0);
+  return sum > 0 ? round2(sum) : Number(trip.budget) || 0;
+}
+
 export function setTripCategory(state, txIds, tripCat) {
   const ids = new Set(txIds);
   for (const t of state.transactions) if (ids.has(t.id)) t.tripCat = tripCat || null;
@@ -168,8 +175,10 @@ export function tripSummary(state, trip, ctx, today = new Date().toISOString().s
     trip, txs, items, count: txs.length, status, days, elapsed,
     spent: round2(spent), before: round2(before), pending: round2(pending), paidOutside: round2(paidOutside),
     committed: round2(spent + pending),
-    remaining: round2(trip.budget - spent - pending),
-    dailyBudget: trip.budget ? round2(trip.budget / days) : 0,
+    budget: tripBudget(trip),
+    budgetFromCategories: Object.values(trip.catBudgets || {}).some(v => Number(v) > 0),
+    remaining: round2(tripBudget(trip) - spent - pending),
+    dailyBudget: tripBudget(trip) ? round2(tripBudget(trip) / days) : 0,
     perDay: round2(perDay),
     projected: round2(projected),
     byCategory: r2(byCategory),

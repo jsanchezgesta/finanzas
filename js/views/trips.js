@@ -1,6 +1,6 @@
 import { h, money, pct, dateLabel, daysBetween, round2 } from '../util.js';
 import { update, getState } from '../store.js';
-import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates, TRIP_CATEGORIES, tripCategoryOf, setTripCategory, addTripItem, updateTripItem, removeTripItem } from '../trips.js';
+import { newTrip, assignTrips, setTrip, tripSummary, tripCandidates, TRIP_CATEGORIES, tripCategoryOf, setTripCategory, tripBudget, addTripItem, updateTripItem, removeTripItem } from '../trips.js';
 
 const TRIP_CAT_MAP = new Map(TRIP_CATEGORIES.map(c => [c.id, c]));
 import { buildContext } from '../analysis.js';
@@ -36,7 +36,7 @@ export function render(root, { state, ctx, params, navigate }) {
   const grid = h('div', { class: 'grid' });
   for (const tr of trips) {
     const s = tripSummary(state, tr, ctx);
-    const ratio = tr.budget ? s.spent / tr.budget : 0;
+    const ratio = s.budget ? s.spent / s.budget : 0;
     const color = ratio > 1 ? 'var(--neg)' : ratio > 0.85 ? 'var(--warn)' : 'var(--accent)';
     grid.append(h('a', { class: 'card span-6', href: '#/viajes?id=' + tr.id, style: { textDecoration: 'none', color: 'inherit' } },
       h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } },
@@ -47,9 +47,9 @@ export function render(root, { state, ctx, params, navigate }) {
         h('span', { class: 'tag' + (s.status === 'ongoing' ? ' auto' : '') }, STATUS[s.status])),
       h('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: '14px' } },
         h('b', { class: 'num' }, money(s.spent, { decimals: false })),
-        h('span', { class: 'muted num' }, tr.budget ? 'de ' + money(tr.budget, { decimals: false }) : 'sin presupuesto')),
+        h('span', { class: 'muted num' }, s.budget ? 'de ' + money(s.budget, { decimals: false }) : 'sin presupuesto')),
       h('div', { class: 'bar', style: { height: '8px' } }, h('div', { style: { width: Math.min(100, ratio * 100) + '%', background: color } })),
-      h('div', { class: 'small muted', style: { marginTop: '6px' } }, `${s.count} movimientos` + (tr.budget ? ` · ${s.remaining >= 0 ? 'quedan ' + money(s.remaining, { decimals: false }) : 'pasado ' + money(-s.remaining, { decimals: false })}` : ''))));
+      h('div', { class: 'small muted', style: { marginTop: '6px' } }, `${s.count} movimientos` + (s.budget ? ` · ${s.remaining >= 0 ? 'quedan ' + money(s.remaining, { decimals: false }) : 'pasado ' + money(-s.remaining, { decimals: false })}` : ''))));
   }
   root.append(grid);
 }
@@ -66,16 +66,16 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
 
   const kpi = (label, value, sub, cls = '') => h('div', { class: 'kpi' }, h('div', { class: 'kpi-label' }, label), h('div', { class: 'kpi-value ' + cls }, value), h('div', { class: 'kpi-sub' }, sub));
   root.append(h('div', { class: 'kpis', style: { marginBottom: '16px' } },
-    kpi('Presupuesto', trip.budget ? money(trip.budget, { decimals: false }) : '—', trip.budget ? money(s.dailyBudget, { decimals: false }) + ' por día' : 'sin presupuesto'),
+    kpi('Presupuesto', s.budget ? money(s.budget, { decimals: false }) : '—', s.budget ? money(s.dailyBudget, { decimals: false }) + ' por día' + (s.budgetFromCategories ? ' · suma de partidas' : '') : 'sin presupuesto'),
     kpi('Gastado', money(s.spent, { decimals: false }), s.pending ? `+ ${money(s.pending, { decimals: false })} pendiente de pagar` : s.before ? `${money(s.before, { decimals: false })} antes del viaje` : `${s.count} movimientos`),
-    kpi(s.remaining >= 0 ? 'Queda' : 'Pasado', trip.budget ? money(Math.abs(s.remaining), { decimals: false }) : '—', trip.budget ? (s.pending ? 'contando lo pendiente' : pct(s.spent / trip.budget) + ' usado') : ' ', s.remaining < 0 ? 'neg' : ''),
-    kpi('Por día', s.elapsed ? money(s.perDay, { decimals: false }) : '—', s.elapsed ? (trip.budget ? `objetivo ${money(s.dailyBudget, { decimals: false })}` : 'durante el viaje') : 'aún no ha empezado',
-      trip.budget && s.elapsed && s.perDay > s.dailyBudget ? 'neg' : '')));
+    kpi(s.remaining >= 0 ? 'Queda' : 'Pasado', s.budget ? money(Math.abs(s.remaining), { decimals: false }) : '—', s.budget ? (s.pending ? 'contando lo pendiente' : pct(s.spent / s.budget) + ' usado') : ' ', s.remaining < 0 ? 'neg' : ''),
+    kpi('Por día', s.elapsed ? money(s.perDay, { decimals: false }) : '—', s.elapsed ? (s.budget ? `objetivo ${money(s.dailyBudget, { decimals: false })}` : 'durante el viaje') : 'aún no ha empezado',
+      s.budget && s.elapsed && s.perDay > s.dailyBudget ? 'neg' : '')));
 
-  if (s.status === 'ongoing' && trip.budget) {
+  if (s.status === 'ongoing' && s.budget) {
     const left = s.days - s.elapsed;
-    const perDayLeft = left > 0 ? (trip.budget - s.spent - s.pending) / left : 0;
-    root.append(h('div', { class: 'banner' + (s.projected <= trip.budget ? ' ok' : '') },
+    const perDayLeft = left > 0 ? (s.budget - s.spent - s.pending) / left : 0;
+    root.append(h('div', { class: 'banner' + (s.projected <= s.budget ? ' ok' : '') },
       h('span', {}, `A este ritmo terminarás en ${money(s.projected, { decimals: false })}. `,
         left > 0 ? (perDayLeft >= 0 ? `Para cumplir el presupuesto puedes gastar ${money(perDayLeft, { decimals: false })} al día los ${left} días que quedan.` : 'Ya has superado el presupuesto.') : '')));
   }
@@ -112,9 +112,11 @@ function renderTrip(root, { state, ctx, trip, navigate }) {
       input));
   }
   const catBudgetTotal = rows.reduce((a, r) => a + r.budget, 0);
-  if (catBudgetTotal) catCard.append(list, h('div', { class: 'small ' + (trip.budget && catBudgetTotal > trip.budget ? 'neg' : 'muted'), style: { marginTop: '10px', textAlign: 'right' } },
-    `Partidas: ${money(catBudgetTotal, { decimals: false })}` + (trip.budget ? ` de ${money(trip.budget, { decimals: false })}` : '') + (trip.budget && catBudgetTotal < trip.budget ? ` · ${money(trip.budget - catBudgetTotal, { decimals: false })} sin asignar` : '')));
-  else catCard.append(list, h('p', { class: 'small muted', style: { margin: '10px 0 0' } }, 'Opcional: pon un presupuesto a cada partida.'));
+  const rowsSpent = rows.reduce((a, r) => a + r.spent + r.pending, 0);
+  catCard.append(list, catBudgetTotal
+    ? h('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)', fontWeight: 650 } },
+        h('span', {}, 'Total'), h('span', { class: 'num' }, `${money(rowsSpent, { decimals: false })} de ${money(catBudgetTotal, { decimals: false })}`))
+    : h('p', { class: 'small muted', style: { margin: '10px 0 0' } }, s.budget ? `Presupuesto total de ${money(s.budget, { decimals: false })} sin repartir. Si pones presupuesto a las partidas, el total pasa a ser su suma.` : 'Pon un presupuesto a cada partida; el total del viaje será su suma.'));
   grid.append(catCard);
   grid.append(itemsCard(trip, s, tripCandidates(state, trip, ctx)));
 
@@ -166,7 +168,8 @@ export function editTrip(id) {
   const emoji = h('input', { type: 'text', value: t.emoji || '✈️', maxlength: '4', style: { width: '60px', textAlign: 'center' }, 'aria-label': 'Icono' });
   const start = h('input', { type: 'date', value: t.start });
   const end = h('input', { type: 'date', value: t.end });
-  const budget = h('input', { type: 'number', min: '0', step: '50', value: t.budget || '', placeholder: '0' });
+  const fromCats = id && Object.values(t.catBudgets || {}).some(v => Number(v) > 0);
+  const budget = h('input', { type: 'number', min: '0', step: '50', value: fromCats ? tripBudget(t) : (t.budget || ''), placeholder: '0', disabled: fromCats, title: fromCats ? 'Suma de las partidas; cámbialo desde las partidas del viaje' : '' });
   const info = h('div', { class: 'small muted', style: { marginTop: '10px', minHeight: '18px' } });
   const syncInfo = () => {
     if (start.value && end.value && end.value >= start.value) {
@@ -183,7 +186,7 @@ export function editTrip(id) {
       h('div', { class: 'map-grid', style: { marginTop: '12px' } },
         h('label', { class: 'field' }, h('span', {}, 'Desde'), start),
         h('label', { class: 'field' }, h('span', {}, 'Hasta'), end),
-        h('label', { class: 'field' }, h('span', {}, 'Presupuesto total (€)'), budget)),
+        h('label', { class: 'field' }, h('span', {}, fromCats ? 'Presupuesto (suma de partidas)' : 'Presupuesto total (€)'), budget)),
       info,
       h('p', { class: 'small muted' }, 'Los gastos entre estas fechas se asignan al viaje (no los recibos fijos como el alquiler o las suscripciones). Vuelos y hoteles reservados antes aparecerán como sugerencias.')),
     foot: [
@@ -199,7 +202,7 @@ export function editTrip(id) {
     let newId = id, assigned = 0;
     update(s => {
       s.trips = s.trips || [];
-      if (id) Object.assign(s.trips.find(x => x.id === id), { name: name.value.trim(), emoji: emoji.value.trim() || '✈️', start: start.value, end: end.value, budget: Number(budget.value) || 0 });
+      if (id) Object.assign(s.trips.find(x => x.id === id), { name: name.value.trim(), emoji: emoji.value.trim() || '✈️', start: start.value, end: end.value }, fromCats ? {} : { budget: Number(budget.value) || 0 });
       else { const tr = newTrip({ name: name.value.trim(), emoji: emoji.value.trim() || '✈️', start: start.value, end: end.value, budget: budget.value }); s.trips.push(tr); newId = tr.id; }
       assignTrips(s, buildContext(s));
       assigned = s.transactions.filter(x => x.tripId === newId).length;

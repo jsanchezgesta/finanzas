@@ -4,7 +4,7 @@ import { donut, stackedBars } from '../charts.js';
 import { catIcon, emptyState } from '../ui.js';
 import { loadSample } from '../sample.js';
 import { update } from '../store.js';
-import { tripsInMonths } from '../trips.js';
+import { tripsInMonths, tripBudget } from '../trips.js';
 import { reviewQueue } from '../coach.js';
 
 export function render(root, { state, ctx, params, navigate }) {
@@ -198,7 +198,7 @@ export function render(root, { state, ctx, params, navigate }) {
         return h('a', { class: 'row click', href: '#/viajes?id=' + id, style: { color: 'inherit', textDecoration: 'none' } },
           h('span', { style: { fontSize: '22px' } }, tr.emoji || '✈️'),
           h('div', { class: 'grow' }, h('div', { class: 'title' }, tr.name), h('div', { class: 'desc' }, `${dateLabel(tr.start)} – ${dateLabel(tr.end)}`)),
-          h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), tr.budget ? h('div', { class: 'small muted' }, 'presupuesto ' + money(tr.budget, { decimals: false })) : null));
+          h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), tripBudget(tr) ? h('div', { class: 'small muted' }, 'presupuesto ' + money(tripBudget(tr), { decimals: false })) : null));
       }))));
   }
 

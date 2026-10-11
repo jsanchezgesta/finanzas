@@ -20,7 +20,7 @@ function setup() {
     tx('2026-05-30', -30, 'restaurantes', { tr: { kind: 'card', originalCurrency: 'GBP' } }), // foreign, 2 days before: suggestion
     tx('2026-07-20', -50, 'restaurantes'),              // unrelated
   ];
-  s.trips = [newTrip({ name: 'Londres', start: '2026-06-01', end: '2026-06-05', budget: 500, catBudgets: { restaurantes: 100 } })];
+  s.trips = [newTrip({ name: 'Londres', start: '2026-06-01', end: '2026-06-05', budget: 500 })];
   return s;
 }
 
@@ -119,4 +119,10 @@ test('prepaid travel costs go to Otros y prepagos', () => {
   const ctx = buildContext(defaultState());
   assert.equal(tripCategoryOf({ description: 'IATI SEGUROS SEGURO DE VIAJE', merchantName: '', categoryId: 'seguros' }, ctx), 'otros');
   assert.equal(tripCategoryOf({ description: 'HOLAFLY ESIM', merchantName: '', categoryId: 'telefonia' }, ctx), 'otros');
+});
+
+test('trip budget is the sum of category budgets when set', async () => {
+  const { tripBudget } = await import('../js/trips.js');
+  assert.equal(tripBudget({ budget: 900, catBudgets: {} }), 900);
+  assert.equal(tripBudget({ budget: 900, catBudgets: { vuelos: 250, alojamiento: 380, comida: 150 } }), 780);
 });
