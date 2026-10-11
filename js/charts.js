@@ -18,7 +18,7 @@ export function donut(segments, { size = 200, thickness = 26, centerTop = '', ce
     offset += len;
     return el;
   }).join('') : `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${thickness}"/>`;
-  return `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Gráfico de reparto">${arcs}
+  return `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="Breakdown chart">${arcs}
     <text x="50%" y="${size / 2 - 2}" text-anchor="middle" class="donut-center-top">${esc(centerTop)}</text>
     <text x="50%" y="${size / 2 + 18}" text-anchor="middle">${esc(centerBottom)}</text></svg>`;
 }
@@ -64,7 +64,7 @@ export function stackedBars({ labels, keys, series, line, selected, height = 240
   if (keys) labels.forEach((_, i) => {
     out += `<rect class="bar-hit" data-month="${esc(keys[i])}" x="${padL + i * bw}" y="${padT}" width="${bw}" height="${plotH + padB}"><title>${esc(labels[i])}</title></rect>`;
   });
-  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Evolución mensual">${out}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Monthly trend">${out}</svg>`;
 }
 
 function niceStep(raw) {

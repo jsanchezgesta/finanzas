@@ -11,12 +11,12 @@ import { cleanDescription } from './merchant.js';
 
 // Trip-only categories, independent of the monthly ones.
 export const TRIP_CATEGORIES = [
-  { id: 'vuelos', name: 'Vuelos', icon: '✈️', color: '#2a9dc4' },
-  { id: 'alojamiento', name: 'Alojamiento', icon: '🏨', color: '#7b6bb0' },
-  { id: 'transporte', name: 'Transporte', icon: '🚕', color: '#4a7f9e' },
-  { id: 'comida', name: 'Comida', icon: '🍽️', color: '#e07a5f' },
-  { id: 'actividades', name: 'Actividades', icon: '🎟️', color: '#c06c84' },
-  { id: 'otros', name: 'Otros y prepagos', icon: '🧳', color: '#a0a6ad' },
+  { id: 'vuelos', name: 'Flights', icon: '✈️', color: '#2a9dc4' },
+  { id: 'alojamiento', name: 'Accommodation', icon: '🏨', color: '#7b6bb0' },
+  { id: 'transporte', name: 'Transport', icon: '🚕', color: '#4a7f9e' },
+  { id: 'comida', name: 'Food', icon: '🍽️', color: '#e07a5f' },
+  { id: 'actividades', name: 'Activities', icon: '🎟️', color: '#c06c84' },
+  { id: 'otros', name: 'Other & prepaid', icon: '🧳', color: '#a0a6ad' },
 ];
 const TRIP_CAT_IDS = new Set(TRIP_CATEGORIES.map(c => c.id));
 

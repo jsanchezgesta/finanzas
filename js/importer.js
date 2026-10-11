@@ -17,7 +17,7 @@ export async function readFileRows(file) {
     try {
       XLSX = await import(/* @vite-ignore */ SHEETJS_URL);
     } catch {
-      throw new Error('Para leer Excel hace falta conexión la primera vez. Prueba de nuevo o exporta el extracto como CSV.');
+      throw new Error('Reading Excel files needs a connection the first time. Try again, or export the statement as CSV.');
     }
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     // Pick the sheet with the most rows.
@@ -43,7 +43,7 @@ function trMerchant(p) {
   const kind = { buy: 'inversion', sell: 'inversion', roundup: 'redondeo', saveback: 'saveback', reward: 'saveback', interest: 'intereses', dividend: 'dividendos', fee: 'comisiones', tax: 'impuestos' }[p.tr.kind] || p.tr.kind;
   const asset = (p.tr.asset || '').toLowerCase().replace(/[^a-z0-9áéíóúñü ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 4).join(' ');
   const key = ('tr ' + kind + (asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' ' + asset : '')).trim();
-  const label = { inversion: 'Inversión', redondeo: 'Redondeo', saveback: 'Saveback', intereses: 'Intereses Trade Republic', dividendos: 'Dividendos', comisiones: 'Comisiones Trade Republic', impuestos: 'Impuestos Trade Republic' }[kind] || kind;
+  const label = { inversion: 'Investment', redondeo: 'Round-up', saveback: 'Saveback', intereses: 'Trade Republic interest', dividendos: 'Dividends', comisiones: 'Trade Republic fees', impuestos: 'Trade Republic tax' }[kind] || kind;
   return { key, name: label + (p.tr.asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' · ' + p.tr.asset : '') };
 }
 

@@ -4,6 +4,7 @@ Personal finance tracker and planner. You import your bank exports; the app cate
 
 - **Local-first.** Data lives in your browser (IndexedDB). No server, no account, no bank connection.
 - **Installs on your phone** as an app (PWA) and works offline.
+- **English UI**, built for Spanish banks (CaixaBank, Trade Republic, Openbank…).
 - **No build step, no dependencies.** Plain HTML, CSS and JavaScript modules. Hosted on GitHub Pages.
 
 ## What it does
@@ -14,22 +15,22 @@ Personal finance tracker and planner. You import your bank exports; the app cate
 
 **Categorize.** Every merchant is normalized ("COMPRA TARJ. 5402XXXX MERCADONA BARCELONA 12/10" → `mercadona`).
 - Known merchant (you confirmed it before) → categorized automatically.
-- New merchant → goes to **Revisar**, one card per merchant with a suggested category. One tap (or Enter) confirms every transaction of that merchant and saves a rule. Keyboard: `Enter` accept, `1–9` pick, `S` skip, `Z` undo.
+- New merchant → goes to **Review**, one card per merchant with a suggested category. One tap (or Enter) confirms every transaction of that merchant and saves a rule. Keyboard: `Enter` accept, `1–9` pick, `S` skip, `Z` undo.
 - Money moving between your own accounts (same amount out of one, into another within 4 days) is suggested as a transfer and excluded from spending.
 
 **Analyze.** Each expense is classified as:
-- **Fijo recurrente** — same merchant on a regular cadence (weekly → yearly) with a stable amount, or a fixed-type category (rent, utilities).
-- **Variable habitual** — day-to-day spending (groceries, transport, eating out).
-- **Puntual** — occasional or large (above a threshold you set, default 150 €).
-- **Inversión y ahorro** — anything in a saving/investment category.
+- **Fixed recurring** — same merchant on a regular cadence (weekly → yearly) with a stable amount, or a fixed-type category (rent, utilities).
+- **Everyday variable** — day-to-day spending (groceries, transport, eating out).
+- **One-off** — occasional or large (above a threshold you set, default 150 €).
+- **Investing & saving** — anything in a saving/investment category.
 
 The dashboard shows income, spending, invested amount and savings rate; a 12-month trend; spend by category vs. your 3-month average; detected recurring payments with next expected date and yearly cost; one-off purchases; top merchants; and a 50/30/20 read-out.
 
-**Ahorro → Coach.** Rate merchants (or single purchases) as Necesidad, Deseo or Capricho. Each month shows the avoidable spend (caprichos) and its *coste de oportunidad*: what it would be worth after 10 years in an MSCI World fund (7 %/year by default, editable), plus the value of cutting your average monthly caprichos for 10 years. Merchants come back for review every 90 days while you keep spending there; discretionary ones first, essential contracts after as a "still the best rate?" check. A badge and a Resumen banner show pending reviews.
+**Savings → Coach.** Rate merchants (or single purchases) as Need, Want or Like. Each month shows the avoidable spend (likes) and its *opportunity cost*: what it would be worth after 10 years in an MSCI World fund (7 %/year by default, editable), plus the value of cutting your average monthly likes for 10 years. Merchants come back for review every 90 days while you keep spending there; discretionary ones first, essential contracts after as a "still the best rate?" check. A badge and an Overview banner show pending reviews.
 
-**Ahorro → Inversión.** Contributions per month (own money, round-ups, Saveback), interest and dividends earned, and positions per asset (shares, invested, approximate value at the last price seen in your exports). A Saveback tracker shows this month's TR card spend against the 1,500 € cap, the Saveback you're generating, whether your savings plans meet the 50 €/month condition, and how much Saveback you left on the table by paying with other banks' cards. Saveback terms are editable in Ajustes.
+**Savings → Investing.** Contributions per month (own money, round-ups, Saveback), interest and dividends earned, and positions per asset (shares, invested, approximate value at the last price seen in your exports). A Saveback tracker shows this month's TR card spend against the 1,500 € cap, the Saveback you're generating, whether your savings plans meet the 50 €/month condition, and how much Saveback you left on the table by paying with other banks' cards. Saveback terms are editable in Settings.
 
-**Viajes.** A trip has dates, a total budget and optional budgets per trip category: Vuelos, Alojamiento, Transporte, Comida, Actividades and Otros y prepagos (insurance, visas, eSIM). **Pagos previstos**: list expected payments per trip and tick them when paid; pending amounts count against the budget, paid ones are linked to the matching movement (or count as paid outside your accounts). Trip categories are derived from the merchant code, the merchant name and the monthly category, and can be changed per movement without touching its monthly category. Expenses inside the dates are assigned automatically, except fixed bills, income, investments and merchants you use regularly at home (those are suggested instead, unless paid in a foreign currency). Flights and hotels booked up to 4 months earlier, and foreign-currency payments near the dates, appear as one-tap suggestions. The trip view shows budget vs spent, daily spend vs the daily budget, a projection while the trip is ongoing, and spend per category against its budget. Any movement can be moved in or out of a trip from its detail sheet.
+**Trips.** A trip has dates, a total budget and optional budgets per trip category: Flights, Accommodation, Transport, Food, Activities and Other & prepaid (insurance, visas, eSIM). **Planned payments**: list expected payments per trip and tick them when paid; pending amounts count against the budget, paid ones are linked to the matching movement (or count as paid outside your accounts). Trip categories are derived from the merchant code, the merchant name and the monthly category, and can be changed per movement without touching its monthly category. Expenses inside the dates are assigned automatically, except fixed bills, income, investments and merchants you use regularly at home (those are suggested instead, unless paid in a foreign currency). Flights and hotels booked up to 4 months earlier, and foreign-currency payments near the dates, appear as one-tap suggestions. The trip view shows budget vs spent, daily spend vs the daily budget, a projection while the trip is ongoing, and spend per category against its budget. Any movement can be moved in or out of a trip from its detail sheet.
 
 **Plan.** Zero-based monthly budget: expected income, then every euro assigned, savings first. Prefills from your 3-month average, shows plan vs. actual per category.
 
@@ -40,7 +41,7 @@ npm start            # serves on http://localhost:5173 (or any static server)
 npm test             # unit tests (Node 20+, no install needed)
 ```
 
-`samples/` has two example exports (CaixaBank-style and Trade Republic-style) to try the import. Or press "Probar con datos de ejemplo".
+`samples/` has two example exports (CaixaBank-style and Trade Republic-style) to try the import. Or press "Try with sample data".
 
 ## Deploy
 
@@ -50,7 +51,7 @@ On your phone, open the Pages URL and use "Add to Home Screen".
 
 ## Your data
 
-Everything stays in the browser where you use the app. Phone and laptop each have their own copy; use **Ajustes → Descargar copia / Restaurar copia** to move data between them, and download a backup now and then (clearing browser data deletes it).
+Everything stays in the browser where you use the app. Phone and laptop each have their own copy; use **Settings → Download backup / Restore backup** to move data between them, and download a backup now and then (clearing browser data deletes it).
 
 ## Code map
 
@@ -67,6 +68,6 @@ Everything stays in the browser where you use the app. Phone and laptop each hav
 | `js/coach.js` | Need/want/like values, opportunity cost, review schedule |
 | `js/defaults.js` | Default categories and keyword hints |
 | `js/store.js` | State and persistence (IndexedDB) |
-| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Viajes, Inversión, Importar, Ajustes |
+| `js/views/*` | Overview, Transactions, Review, Plan, Trips, Savings, Investing, Import, Settings |
 
 See [ROADMAP.md](ROADMAP.md) for phase 2 (finding savings).

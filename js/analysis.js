@@ -4,21 +4,21 @@
 import { daysBetween, median, monthKey, addDays, round2 } from './util.js';
 
 const CADENCES = [
-  { id: 'weekly', label: 'Semanal', min: 5, max: 9, days: 7, perMonth: 52 / 12, minCount: 4 },
-  { id: 'biweekly', label: 'Quincenal', min: 12, max: 17, days: 14, perMonth: 26 / 12, minCount: 3 },
-  { id: 'monthly', label: 'Mensual', min: 25, max: 36, days: 30.4, perMonth: 1, minCount: 3 },
-  { id: 'bimonthly', label: 'Bimestral', min: 55, max: 68, days: 61, perMonth: 1 / 2, minCount: 3 },
-  { id: 'quarterly', label: 'Trimestral', min: 82, max: 100, days: 91, perMonth: 1 / 3, minCount: 2 },
-  { id: 'yearly', label: 'Anual', min: 340, max: 390, days: 365, perMonth: 1 / 12, minCount: 2 },
+  { id: 'weekly', label: 'Weekly', min: 5, max: 9, days: 7, perMonth: 52 / 12, minCount: 4 },
+  { id: 'biweekly', label: 'Fortnightly', min: 12, max: 17, days: 14, perMonth: 26 / 12, minCount: 3 },
+  { id: 'monthly', label: 'Monthly', min: 25, max: 36, days: 30.4, perMonth: 1, minCount: 3 },
+  { id: 'bimonthly', label: 'Bimonthly', min: 55, max: 68, days: 61, perMonth: 1 / 2, minCount: 3 },
+  { id: 'quarterly', label: 'Quarterly', min: 82, max: 100, days: 91, perMonth: 1 / 3, minCount: 2 },
+  { id: 'yearly', label: 'Yearly', min: 340, max: 390, days: 365, perMonth: 1 / 12, minCount: 2 },
 ];
 
 export const NATURE_LABELS = {
-  fixed: 'Fijo recurrente',
-  variable: 'Variable habitual',
-  oneoff: 'Puntual',
-  investment: 'Inversión y ahorro',
-  income: 'Ingreso',
-  transfer: 'Traspaso',
+  fixed: 'Fixed recurring',
+  variable: 'Everyday variable',
+  oneoff: 'One-off',
+  investment: 'Investing & saving',
+  income: 'Income',
+  transfer: 'Transfer',
 };
 
 export const NATURE_COLORS = {

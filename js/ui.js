@@ -5,7 +5,7 @@ import { h, clear } from './util.js';
 export function openSheet({ title, body, foot, onClose }) {
   const root = document.getElementById('sheet-root');
   const backdrop = h('div', { class: 'sheet-backdrop' });
-  const closeBtn = h('button', { class: 'btn icon ghost', 'aria-label': 'Cerrar' }, '✕');
+  const closeBtn = h('button', { class: 'btn icon ghost', 'aria-label': 'Close' }, '✕');
   const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
     h('div', { class: 'sheet-head' }, h('h2', {}, title), closeBtn),
     h('div', { class: 'sheet-body' }, body),
@@ -47,7 +47,7 @@ export function catIcon(cat, size = 34) {
   }, cat?.icon || '?');
 }
 
-export const KIND_LABELS = { expense: 'Gastos', saving: 'Ahorro e inversión', income: 'Ingresos', transfer: 'Movimientos internos' };
+export const KIND_LABELS = { expense: 'Expenses', saving: 'Saving & investing', income: 'Income', transfer: 'Internal transfers' };
 
 // Order categories for a given amount sign: the usual kinds first.
 export function orderedKinds(amount) {
@@ -86,10 +86,10 @@ export function categoryPicker(state, { amount = -1, selected = null, suggestion
     if (!list.length) continue;
     all.append(h('div', { class: 'chip-group-label' }, KIND_LABELS[k]), h('div', { class: 'chips' }, list.map(c => chip(c))));
   }
-  const toggle = h('button', { class: 'btn ghost sm', type: 'button', style: { marginTop: '10px' } }, 'Ver todas las categorías ▾');
+  const toggle = h('button', { class: 'btn ghost sm', type: 'button', style: { marginTop: '10px' } }, 'See all categories ▾');
   toggle.addEventListener('click', () => {
     all.hidden = !all.hidden;
-    toggle.textContent = all.hidden ? 'Ver todas las categorías ▾' : 'Ocultar ▴';
+    toggle.textContent = all.hidden ? 'See all categories ▾' : 'Hide ▴';
   });
   wrap.append(toggle, all);
   wrap.shortcutIds = top.map(c => c.id);

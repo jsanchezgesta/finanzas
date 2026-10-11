@@ -33,15 +33,15 @@ function draw(view) {
   const doneCount = history.length;
 
   view.append(h('div', { class: 'page-head', style: { marginBottom: '4px' } },
-    h('div', {}, h('h1', {}, 'Revisar'),
-      h('div', { class: 'sub' }, all.length ? `${all.length} comercios nuevos · ${totalTx} movimientos` : 'Nada pendiente')),
-    history.length ? h('button', { class: 'btn sm', onclick: undo }, '↶ Deshacer') : null));
+    h('div', {}, h('h1', {}, 'Review'),
+      h('div', { class: 'sub' }, all.length ? `${all.length} new merchants · ${totalTx} transactions` : 'Nothing pending')),
+    history.length ? h('button', { class: 'btn sm', onclick: undo }, '↶ Undo') : null));
 
   if (!all.length) {
     view.append(h('div', { class: 'card empty' },
-      h('h2', {}, doneCount ? 'Todo revisado' : 'No hay nada que revisar'),
-      h('p', {}, doneCount ? `Has categorizado ${doneCount} comercios. La próxima vez se categorizarán solos.` : 'Cuando importes movimientos de comercios nuevos aparecerán aquí.'),
-      h('div', { class: 'btn-row' }, h('a', { class: 'btn primary', href: '#/resumen' }, 'Ver resumen'), h('a', { class: 'btn', href: '#/importar' }, 'Importar más'))));
+      h('h2', {}, doneCount ? 'All reviewed' : 'Nothing to review'),
+      h('p', {}, doneCount ? `You categorized ${doneCount} merchants. Next time they'll be categorized automatically.` : 'Transactions from new merchants will show up here after an import.'),
+      h('div', { class: 'btn-row' }, h('a', { class: 'btn primary', href: '#/resumen' }, 'See overview'), h('a', { class: 'btn', href: '#/importar' }, 'Import more'))));
     return;
   }
 
@@ -57,9 +57,9 @@ function draw(view) {
   card.append(
     h('div', { class: 'review-merchant' }, g.name),
     h('div', { class: 'review-sum' },
-      h('span', {}, g.txs.length + (g.txs.length === 1 ? ' movimiento' : ' movimientos')),
+      h('span', {}, g.txs.length + (g.txs.length === 1 ? ' transaction' : ' transactions')),
       h('b', { class: isIncome ? 'pos' : '' }, money(g.total, { sign: true })),
-      g.txs[0].transferPairId ? h('span', { class: 'tag auto' }, 'Parece un traspaso entre tus cuentas') : null),
+      g.txs[0].transferPairId ? h('span', { class: 'tag auto' }, 'Looks like a transfer between your accounts') : null),
   );
 
   const txList = h('div', { class: 'review-txs rows' });
@@ -70,18 +70,18 @@ function draw(view) {
         h('div', { class: 'desc' }, dateLabel(t.date, true) + (accounts.size > 1 ? ' · ' + (accounts.get(t.accountId) || '') : ''))),
       h('div', { class: 'amount' }, money(t.amount))));
   }
-  if (g.txs.length > 4) txList.append(h('div', { class: 'small muted', style: { padding: '6px 0' } }, `y ${g.txs.length - 4} más`));
+  if (g.txs.length > 4) txList.append(h('div', { class: 'small muted', style: { padding: '6px 0' } }, `and ${g.txs.length - 4} more`));
   card.append(txList);
 
   const suggestion = g.suggestion ? state.categories.find(c => c.id === g.suggestion) : null;
   if (suggestion) {
     card.append(h('button', { class: 'suggest', onclick: () => pick(suggestion.id) },
       catIcon(suggestion, 36),
-      h('div', {}, h('div', { class: 'small muted' }, 'Sugerencia'), h('div', { style: { fontWeight: 700, fontSize: '16px' } }, suggestion.name)),
+      h('div', {}, h('div', { class: 'small muted' }, 'Suggestion'), h('div', { style: { fontWeight: 700, fontSize: '16px' } }, suggestion.name)),
       h('span', { class: 'k' }, 'Enter ↵')));
-    card.append(h('div', { class: 'chip-group-label' }, 'O elige otra'));
+    card.append(h('div', { class: 'chip-group-label' }, 'Or pick another'));
   } else {
-    card.append(h('div', { class: 'chip-group-label' }, '¿Qué es?'));
+    card.append(h('div', { class: 'chip-group-label' }, 'What is it?'));
   }
 
   const picker = categoryPicker(state, { amount: g.total || -1, suggestion: null, exclude: suggestion?.id, onPick: pick, shortcuts: true, frequentCount: suggestion ? 8 : 9 });
@@ -91,11 +91,11 @@ function draw(view) {
   const splitBox = h('div', { hidden: true, style: { marginTop: '14px' } });
   const options = h('div', { class: 'review-options' },
     h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: true, onchange: e => { remember = e.target.checked; } }),
-      'Recordar para «' + g.name + '»'),
-    !isIncome ? h('label', { class: 'check', title: 'Cuenta como gasto puntual aunque sea pequeño' },
-      h('input', { type: 'checkbox', onchange: e => { oneoff = e.target.checked; } }), 'Es un gasto puntual') : null,
-    g.txs.length > 1 ? h('button', { class: 'btn ghost sm', onclick: () => { split = !split; splitBox.hidden = !split; } }, 'Son cosas distintas: uno a uno') : null,
-    h('button', { class: 'btn ghost sm', style: { marginLeft: 'auto' }, onclick: skip }, 'Saltar →'),
+      'Remember for “' + g.name + '”'),
+    !isIncome ? h('label', { class: 'check', title: 'Count as a one-off expense even if small' },
+      h('input', { type: 'checkbox', onchange: e => { oneoff = e.target.checked; } }), "It's a one-off") : null,
+    g.txs.length > 1 ? h('button', { class: 'btn ghost sm', onclick: () => { split = !split; splitBox.hidden = !split; } }, 'Different things: one by one') : null,
+    h('button', { class: 'btn ghost sm', style: { marginLeft: 'auto' }, onclick: skip }, 'Skip →'),
   );
   card.append(options, splitBox);
 
@@ -104,7 +104,7 @@ function draw(view) {
     const cats = state.categories;
     for (const t of g.txs) {
       const sel = h('select', { style: { maxWidth: '200px' } },
-        h('option', { value: '' }, 'Elegir…'),
+        h('option', { value: '' }, 'Choose…'),
         cats.map(c => h('option', { value: c.id }, c.icon + ' ' + c.name)));
       sel.addEventListener('change', () => {
         if (!sel.value) return;
@@ -120,7 +120,7 @@ function draw(view) {
   }
 
   view.append(card,
-    h('div', { class: 'kbd-hint' }, 'Atajos: Enter acepta la sugerencia · 1–9 elige categoría · S salta · Z deshace'));
+    h('div', { class: 'kbd-hint' }, 'Shortcuts: Enter accepts the suggestion · 1–9 picks a category · S skips · Z undoes'));
 
   function snapshot(txs) {
     return txs.map(t => ({ id: t.id, categoryId: t.categoryId, status: t.status, natureOverride: t.natureOverride, suggestedCategoryId: t.suggestedCategoryId }));
@@ -151,7 +151,7 @@ function draw(view) {
     });
     if (last.key) skipped.delete(last.key);
     draw(view);
-    toast('Deshecho');
+    toast('Undone');
   }
 
   if (keyHandler) document.removeEventListener('keydown', keyHandler);

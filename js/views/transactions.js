@@ -17,7 +17,7 @@ export function render(root, { state, ctx, params }) {
   };
   let limit = PAGE;
 
-  root.append(h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Movimientos'), h('div', { class: 'sub', id: 'tx-sub' }))));
+  root.append(h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Transactions'), h('div', { class: 'sub', id: 'tx-sub' }))));
 
   const months = monthsWithData(state).reverse();
   const sel = (key, options) => {
@@ -26,17 +26,17 @@ export function render(root, { state, ctx, params }) {
     s.addEventListener('change', () => { f[key] = s.value; if (key !== 'q') f.exact = key === 'q' ? false : f.exact; refresh(); });
     return s;
   };
-  const search = h('input', { type: 'search', placeholder: 'Buscar comercio o concepto…', value: f.q });
+  const search = h('input', { type: 'search', placeholder: 'Search merchant or description…', value: f.q });
   search.addEventListener('input', debounce(() => { f.q = search.value; f.exact = false; refresh(); }, 150));
 
   const filters = h('div', { class: 'filters' },
     search,
-    sel('m', [['', 'Todos los meses'], ...months.map(m => [m, monthLabel(m, true)])]),
-    sel('cat', [['', 'Todas las categorías'], ['_none', 'Sin categoría'], ...state.categories.map(c => [c.id, c.icon + ' ' + c.name])]),
-    sel('nat', [['', 'Cualquier tipo'], ...['fixed', 'variable', 'oneoff', 'investment', 'income', 'transfer'].map(n => [n, NATURE_LABELS[n]])]),
-    state.accounts.length > 1 ? sel('acc', [['', 'Todas las cuentas'], ...state.accounts.map(a => [a.id, a.name])]) : null,
-    sel('st', [['', 'Todos'], ['pending', 'Por revisar'], ['auto', 'Automáticos'], ['confirmed', 'Confirmados']]),
-    state.trips?.length ? sel('trip', [['', 'Con y sin viaje'], ['_any', 'Solo viajes'], ['_none', 'Sin viaje'], ...state.trips.map(t => [t.id, (t.emoji || '✈️') + ' ' + t.name])]) : null,
+    sel('m', [['', 'All months'], ...months.map(m => [m, monthLabel(m, true)])]),
+    sel('cat', [['', 'All categories'], ['_none', 'Uncategorized'], ...state.categories.map(c => [c.id, c.icon + ' ' + c.name])]),
+    sel('nat', [['', 'Any type'], ...['fixed', 'variable', 'oneoff', 'investment', 'income', 'transfer'].map(n => [n, NATURE_LABELS[n]])]),
+    state.accounts.length > 1 ? sel('acc', [['', 'All accounts'], ...state.accounts.map(a => [a.id, a.name])]) : null,
+    sel('st', [['', 'Any status'], ['pending', 'To review'], ['auto', 'Automatic'], ['confirmed', 'Confirmed']]),
+    state.trips?.length ? sel('trip', [['', 'With or without trip'], ['_any', 'Trips only'], ['_none', 'No trip'], ...state.trips.map(t => [t.id, (t.emoji || '✈️') + ' ' + t.name])]) : null,
   );
   const list = h('div', { class: 'card', style: { paddingTop: '4px' } });
   root.append(filters, list);
@@ -68,8 +68,8 @@ export function render(root, { state, ctx, params }) {
     const rows = state.transactions.filter(matches);
     const inSum = rows.filter(t => t.amount > 0).reduce((a, t) => a + t.amount, 0);
     const outSum = rows.filter(t => t.amount < 0).reduce((a, t) => a + t.amount, 0);
-    document.getElementById('tx-sub').textContent = `${rows.length} movimientos · entradas ${money(inSum, { decimals: false })} · salidas ${money(outSum, { decimals: false })}`;
-    if (!rows.length) { list.append(h('p', { class: 'muted', style: { padding: '20px 0 8px', textAlign: 'center' } }, 'No hay movimientos con estos filtros.')); return; }
+    document.getElementById('tx-sub').textContent = `${rows.length} transactions · in ${money(inSum, { decimals: false })} · out ${money(outSum, { decimals: false })}`;
+    if (!rows.length) { list.append(h('p', { class: 'muted', style: { padding: '20px 0 8px', textAlign: 'center' } }, 'No transactions match these filters.')); return; }
     let lastDay = null, dayBox = null;
     const accounts = new Map(state.accounts.map(a => [a.id, a.name]));
     for (const t of rows.slice(0, limit)) {
@@ -87,7 +87,7 @@ export function render(root, { state, ctx, params }) {
         h('div', { class: 'grow' },
           h('div', { class: 'title' }, t.merchantName),
           h('div', { class: 'desc' },
-            t.status === 'pending' ? h('span', { class: 'tag warn' }, 'Por revisar') : (cat?.name || ''),
+            t.status === 'pending' ? h('span', { class: 'tag warn' }, 'To review') : (cat?.name || ''),
             ['fixed', 'oneoff'].includes(nature) ? ' · ' + NATURE_LABELS[nature] : '',
             accounts.size > 1 ? ' · ' + (accounts.get(t.accountId) || '') : '',
             t.tripId ? ' · ' + (tripName(t.tripId)) : '',
@@ -96,7 +96,7 @@ export function render(root, { state, ctx, params }) {
     }
     if (rows.length > limit) {
       list.append(h('div', { style: { textAlign: 'center', paddingTop: '12px' } },
-        h('button', { class: 'btn', onclick: () => { limit += PAGE * 2; refresh(); } }, `Ver más (${rows.length - limit} restantes)`)));
+        h('button', { class: 'btn', onclick: () => { limit += PAGE * 2; refresh(); } }, `Show more (${rows.length - limit} left)`)));
     }
   }
   refresh();
@@ -125,44 +125,44 @@ export function editTransaction(id) {
     const cat = categoryId ? ctx.cats.get(categoryId) : null;
     if (cat && cat.kind !== 'expense') return;
     const auto = natureOf({ ...t, categoryId, natureOverride: null }, ctx);
-    const seg = h('div', { class: 'seg' }, [['', 'Auto (' + (NATURE_LABELS[auto] || '—').toLowerCase() + ')'], ['fixed', 'Fijo'], ['variable', 'Variable'], ['oneoff', 'Puntual']].map(([v, l]) =>
+    const seg = h('div', { class: 'seg' }, [['', 'Auto (' + (NATURE_LABELS[auto] || '—').toLowerCase() + ')'], ['fixed', 'Fixed'], ['variable', 'Variable'], ['oneoff', 'One-off']].map(([v, l]) =>
       h('button', { type: 'button', class: nature === v ? 'on' : '', onclick: () => { nature = v; drawNature(); } }, l)));
-    natureBox.append(h('div', { class: 'chip-group-label' }, 'Tipo de gasto'), seg);
+    natureBox.append(h('div', { class: 'chip-group-label' }, 'Expense type'), seg);
   };
   drawPicker(); drawNature();
 
-  const note = h('input', { type: 'text', placeholder: 'Nota (opcional)', value: t.note || '', style: { width: '100%' } });
+  const note = h('input', { type: 'text', placeholder: 'Note (optional)', value: t.note || '', style: { width: '100%' } });
   let value = t.value || '';
   const merchantValue = state.values?.[t.merchant]?.v;
   const valueBox = h('div', {});
   const drawValue = () => {
-    valueBox.replaceChildren(h('div', { class: 'seg' }, [['', merchantValue ? 'Comercio: ' + VALUE_LABELS[merchantValue].toLowerCase() : 'Según comercio'], ['need', 'Necesidad'], ['want', 'Deseo'], ['like', 'Capricho']].map(([v, l]) =>
+    valueBox.replaceChildren(h('div', { class: 'seg' }, [['', merchantValue ? 'Merchant: ' + VALUE_LABELS[merchantValue].toLowerCase() : 'Use merchant rating'], ['need', 'Need'], ['want', 'Want'], ['like', 'Like']].map(([v, l]) =>
       h('button', { type: 'button', class: value === v ? 'on' : '', onclick: () => { value = v; drawValue(); } }, l))));
   };
   drawValue();
   const trips = [...(state.trips || [])].sort((a, b) => b.start.localeCompare(a.start));
-  const tripSel = trips.length ? h('select', { style: { width: '100%' } }, h('option', { value: '' }, 'Ninguno'), trips.map(tr => h('option', { value: tr.id }, (tr.emoji || '✈️') + ' ' + tr.name))) : null;
+  const tripSel = trips.length ? h('select', { style: { width: '100%' } }, h('option', { value: '' }, 'None'), trips.map(tr => h('option', { value: tr.id }, (tr.emoji || '✈️') + ' ' + tr.name))) : null;
   if (tripSel) tripSel.value = t.tripId || '';
   const body = h('div', {},
     h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' } },
       h('div', {}, h('div', { style: { fontSize: '20px', fontWeight: 700 } }, t.merchantName), h('div', { class: 'small muted' }, dateLabel(t.date, true) + (account ? ' · ' + account.name : ''))),
       h('div', { class: 'amount ' + (t.amount > 0 ? 'pos' : ''), style: { fontSize: '20px', fontWeight: 700 } }, money(t.amount, { sign: true }))),
     h('div', { class: 'small', style: { color: 'var(--ink-2)', margin: '8px 0 4px', wordBreak: 'break-word' } }, t.description),
-    h('div', { class: 'chip-group-label' }, 'Categoría'), pickerBox, natureBox,
-    t.amount < 0 ? [h('div', { class: 'chip-group-label' }, 'Valoración (solo este gasto)'), valueBox] : null,
-    tripSel ? [h('div', { class: 'chip-group-label' }, 'Viaje'), tripSel] : null,
-    h('div', { class: 'chip-group-label' }, 'Nota'), note,
+    h('div', { class: 'chip-group-label' }, 'Category'), pickerBox, natureBox,
+    t.amount < 0 ? [h('div', { class: 'chip-group-label' }, 'Rating (this expense only)'), valueBox] : null,
+    tripSel ? [h('div', { class: 'chip-group-label' }, 'Trip'), tripSel] : null,
+    h('div', { class: 'chip-group-label' }, 'Note'), note,
     h('div', { class: 'review-options', style: { flexDirection: 'column', alignItems: 'flex-start' } },
-      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: true, onchange: e => { remember = e.target.checked; } }), `Recordar para futuros movimientos de «${t.merchantName}»`),
-      sameMerchant ? h('label', { class: 'check' }, h('input', { type: 'checkbox', onchange: e => { applyToPast = e.target.checked; } }), `Aplicar también a los otros ${sameMerchant} movimientos de este comercio`) : null),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: true, onchange: e => { remember = e.target.checked; } }), `Remember for future transactions from “${t.merchantName}”`),
+      sameMerchant ? h('label', { class: 'check' }, h('input', { type: 'checkbox', onchange: e => { applyToPast = e.target.checked; } }), `Also apply to the other ${sameMerchant} transactions from this merchant`) : null),
   );
 
   const sheet = openSheet({
-    title: 'Movimiento', body,
+    title: 'Transaction', body,
     foot: [
-      h('button', { class: 'btn danger ghost', style: { marginRight: 'auto' }, onclick: del }, 'Eliminar'),
-      h('button', { class: 'btn', onclick: () => sheet.close() }, 'Cancelar'),
-      h('button', { class: 'btn primary', onclick: save }, 'Guardar'),
+      h('button', { class: 'btn danger ghost', style: { marginRight: 'auto' }, onclick: del }, 'Delete'),
+      h('button', { class: 'btn', onclick: () => sheet.close() }, 'Cancel'),
+      h('button', { class: 'btn primary', onclick: save }, 'Save'),
     ],
   });
 
@@ -175,13 +175,13 @@ export function editTransaction(id) {
       if (categoryId) confirmCategory(s, [id], categoryId, { remember, applyToPast, nature: nature || null });
     });
     sheet.close();
-    toast('Guardado');
+    toast('Saved');
   }
   function del() {
-    if (!confirm('¿Eliminar este movimiento? Si vuelves a importar el mismo extracto, volverá a aparecer.')) return;
+    if (!confirm('Delete this transaction? It will come back if you import the same statement again.')) return;
     let removed;
     update(s => { removed = s.transactions.find(x => x.id === id); s.transactions = s.transactions.filter(x => x.id !== id); });
     sheet.close();
-    toast('Movimiento eliminado', { action: 'Deshacer', onAction: () => update(s => { s.transactions.push(removed); s.transactions.sort((a, b) => b.date.localeCompare(a.date)); }) });
+    toast('Transaction deleted', { action: 'Undo', onAction: () => update(s => { s.transactions.push(removed); s.transactions.sort((a, b) => b.date.localeCompare(a.date)); }) });
   }
 }

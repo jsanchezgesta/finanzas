@@ -10,13 +10,13 @@ import { reviewQueue } from '../coach.js';
 export function render(root, { state, ctx, params, navigate }) {
   if (!state.transactions.length) {
     root.append(
-      h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Resumen'))),
+      h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Overview'))),
       emptyState({
-        title: 'Empieza importando un extracto',
-        text: 'Descarga los movimientos de tu banco (CSV o Excel) y súbelos. La app los categoriza y aprende de tus confirmaciones.',
+        title: 'Start by importing a statement',
+        text: 'Download your transactions from your bank (CSV or Excel) and upload them. The app categorizes them and learns from your confirmations.',
         actions: [
-          h('a', { class: 'btn primary lg', href: '#/importar' }, 'Importar extracto'),
-          h('button', { class: 'btn lg', onclick: () => { update(s => loadSample(s)); } }, 'Probar con datos de ejemplo'),
+          h('a', { class: 'btn primary lg', href: '#/importar' }, 'Import statement'),
+          h('button', { class: 'btn lg', onclick: () => { update(s => loadSample(s)); } }, 'Try with sample data'),
         ],
       }),
     );
@@ -39,28 +39,28 @@ export function render(root, { state, ctx, params, navigate }) {
 
   // ---------- header ----------
   root.append(h('div', { class: 'page-head' },
-    h('div', {}, h('h1', {}, 'Resumen'), h('div', { class: 'sub' }, (period === 'año' ? `${monthLabel(months[0])} – ${monthLabel(month)}` : monthLabel(month, true)) + (month === currentMonth() ? ' · mes en curso' : ''))),
+    h('div', {}, h('h1', {}, 'Overview'), h('div', { class: 'sub' }, (period === 'año' ? `${monthLabel(months[0])} – ${monthLabel(month)}` : monthLabel(month, true)) + (month === currentMonth() ? ' · current month' : ''))),
     h('div', { class: 'btn-row' },
       h('div', { class: 'seg' },
-        h('button', { class: period === 'mes' ? 'on' : '', onclick: () => go({ p: 'mes' }) }, 'Mes'),
-        h('button', { class: period === 'año' ? 'on' : '', onclick: () => go({ p: 'año' }) }, '12 meses')),
+        h('button', { class: period === 'mes' ? 'on' : '', onclick: () => go({ p: 'mes' }) }, 'Month'),
+        h('button', { class: period === 'año' ? 'on' : '', onclick: () => go({ p: 'año' }) }, '12 months')),
       h('div', { class: 'period' },
-        h('button', { class: 'btn icon', 'aria-label': 'Mes anterior', onclick: () => go({ m: addMonths(month, -1) }) }, '‹'),
-        h('button', { class: 'btn icon', 'aria-label': 'Mes siguiente', disabled: month >= latest, onclick: () => go({ m: addMonths(month, 1) }) }, '›'))),
+        h('button', { class: 'btn icon', 'aria-label': 'Previous month', onclick: () => go({ m: addMonths(month, -1) }) }, '‹'),
+        h('button', { class: 'btn icon', 'aria-label': 'Next month', disabled: month >= latest, onclick: () => go({ m: addMonths(month, 1) }) }, '›'))),
   ));
 
   const pendingAll = state.transactions.filter(t => t.status === 'pending').length;
   if (pendingAll) {
     root.append(h('div', { class: 'banner' },
-      h('div', {}, h('b', {}, `${pendingAll} movimientos por revisar. `), h('span', { class: 'muted' }, 'Hasta que los confirmes, cuentan como «sin categoría».')),
-      h('a', { class: 'btn primary sm', href: '#/revisar' }, 'Revisar ahora')));
+      h('div', {}, h('b', {}, `${pendingAll} transactions to review. `), h('span', { class: 'muted' }, 'Until you confirm them, they count as uncategorized.')),
+      h('a', { class: 'btn primary sm', href: '#/revisar' }, 'Review now')));
   }
 
   const due = reviewQueue(state, ctx).length;
   if (due && !pendingAll) {
     root.append(h('div', { class: 'banner ok' },
-      h('div', {}, h('b', {}, `${due} ${due === 1 ? 'gasto' : 'gastos'} por revisar en el coach de ahorro. `), h('span', { class: 'muted' }, '¿Necesidad, deseo o capricho?')),
-      h('a', { class: 'btn sm', href: '#/ahorro' }, 'Revisar')));
+      h('div', {}, h('b', {}, `${due} ${due === 1 ? 'expense' : 'expenses'} to rate in the savings coach. `), h('span', { class: 'muted' }, 'Need, want or like?')),
+      h('a', { class: 'btn sm', href: '#/ahorro' }, 'Review')));
   }
 
   // ---------- KPIs ----------
@@ -69,10 +69,10 @@ export function render(root, { state, ctx, params, navigate }) {
   const kpi = (label, value, sub, cls = '') => h('div', { class: 'kpi' },
     h('div', { class: 'kpi-label' }, label), h('div', { class: 'kpi-value ' + cls }, value), h('div', { class: 'kpi-sub' }, sub));
   root.append(h('div', { class: 'kpis', style: { marginBottom: '16px' } },
-    kpi('Ingresos', money(total.income, { decimals: false }), period === 'año' ? 'media ' + money(total.income / months.length, { decimals: false }) + '/mes' : ' '),
-    kpi('Gastos', money(total.expense, { decimals: false }), period === 'año' ? 'media ' + money(total.expense / months.length, { decimals: false }) + '/mes' : 'sin contar inversión'),
-    kpi('Invertido', money(total.saving, { decimals: false }), 'inversión y ahorro'),
-    kpi('Tasa de ahorro', pct(savingsRate), (net >= 0 ? 'Te quedan ' : 'Faltan ') + money(Math.abs(net), { decimals: false }), net >= 0 ? 'pos' : 'neg'),
+    kpi('Income', money(total.income, { decimals: false }), period === 'año' ? 'avg ' + money(total.income / months.length, { decimals: false }) + '/month' : ' '),
+    kpi('Spending', money(total.expense, { decimals: false }), period === 'año' ? 'avg ' + money(total.expense / months.length, { decimals: false }) + '/month' : 'excluding investments'),
+    kpi('Invested', money(total.saving, { decimals: false }), 'investing & saving'),
+    kpi('Savings rate', pct(savingsRate), (net >= 0 ? 'Left over: ' : 'Short by ') + money(Math.abs(net), { decimals: false }), net >= 0 ? 'pos' : 'neg'),
   ));
 
   const grid = h('div', { class: 'grid' });
@@ -82,23 +82,23 @@ export function render(root, { state, ctx, params, navigate }) {
   const natures = ['fixed', 'variable', 'oneoff', 'investment'];
   const natureTotal = natures.reduce((a, n) => a + Math.max(0, total.byNature[n] || 0), 0) || 1;
   grid.append(h('section', { class: 'card span-12' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'A dónde va tu dinero'), h('span', { class: 'meta' }, 'fijo · variable · puntual · inversión')),
+    h('div', { class: 'card-head' }, h('h2', {}, 'Where your money goes'), h('span', { class: 'meta' }, 'fixed · variable · one-off · investing')),
     h('div', { class: 'split' }, natures.map(n => h('div', { style: { width: (Math.max(0, total.byNature[n]) / natureTotal * 100) + '%', background: NATURE_COLORS[n] }, title: NATURE_LABELS[n] }))),
     h('div', { class: 'legend' }, natures.map(n => h('a', {
       class: 'item', href: `#/movimientos?nat=${n}&${period === 'mes' ? 'm=' + month : ''}`, style: { color: 'inherit', textDecoration: 'none' },
     }, h('span', { class: 'dot', style: { background: NATURE_COLORS[n] } }), NATURE_LABELS[n], ' ', h('b', {}, money(total.byNature[n] || 0, { decimals: false })),
-      h('span', { class: 'muted' }, ' · ' + Math.round(Math.max(0, total.byNature[n] || 0) / natureTotal * 100) + ' %')))),
+      h('span', { class: 'muted' }, ' · ' + Math.round(Math.max(0, total.byNature[n] || 0) / natureTotal * 100) + '%')))),
   ));
 
   // ---------- monthly trend ----------
   const trendCard = h('section', { class: 'card span-12' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'Evolución mensual'), h('span', { class: 'meta' }, 'barras: gasto e inversión · línea: ingresos')));
+    h('div', { class: 'card-head' }, h('h2', {}, 'Monthly trend'), h('span', { class: 'meta' }, 'bars: spending & investing · line: income')));
   const chart = h('div', { class: 'chart', html: stackedBars({
     labels: trendMonths.map(monthShort),
     keys: trendMonths,
     selected: period === 'mes' ? month : null,
     series: natures.map(n => ({ id: n, label: NATURE_LABELS[n], color: NATURE_COLORS[n], values: trendMonths.map(m => trend[m].byNature[n] || 0) })),
-    line: { label: 'Ingresos', color: 'var(--c-income)', values: trendMonths.map(m => trend[m].income) },
+    line: { label: 'Income', color: 'var(--c-income)', values: trendMonths.map(m => trend[m].income) },
   }) });
   chart.addEventListener('click', e => { const m = e.target.closest('[data-month]')?.dataset.month; if (m) navigate('resumen', { m, p: 'mes' }); });
   trendCard.append(chart);
@@ -112,13 +112,13 @@ export function render(root, { state, ctx, params, navigate }) {
     .filter(x => (x.cat ? x.cat.kind === 'expense' : x.id === '_uncat_out') && x.v > 0.5)
     .sort((a, b) => b.v - a.v);
   const catColor = x => x.cat?.color || '#a0a6ad';
-  const catName = x => x.cat?.name || 'Sin categoría';
+  const catName = x => x.cat?.name || 'Uncategorized';
   const catCard = h('section', { class: 'card span-7' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'Gasto por categoría'), h('span', { class: 'meta' }, prev ? 'vs. media 3 meses anteriores' : '')));
-  if (!expenseCats.length) catCard.append(h('p', { class: 'muted' }, 'Sin gastos en este periodo.'));
+    h('div', { class: 'card-head' }, h('h2', {}, 'Spending by category'), h('span', { class: 'meta' }, prev ? 'vs. previous 3-month average' : '')));
+  if (!expenseCats.length) catCard.append(h('p', { class: 'muted' }, 'No spending in this period.'));
   else {
     const donutEl = h('div', { class: 'chart', html: donut(expenseCats.map(x => ({ id: x.id, label: catName(x), value: x.v, color: catColor(x) })), {
-      centerTop: moneyShort(total.expense), centerBottom: 'gastado',
+      centerTop: moneyShort(total.expense), centerBottom: 'spent',
     }) });
     donutEl.addEventListener('click', e => { const id = e.target.closest('[data-id]')?.dataset.id; if (id) openCat(id); });
     const list = h('div', { class: 'rows' });
@@ -129,7 +129,7 @@ export function render(root, { state, ctx, params, navigate }) {
         const avg = (prev.byCategory[x.id] || 0) / prevMonths.length;
         if (avg > 1) {
           const d = (x.v - avg) / avg;
-          if (Math.abs(d) >= 0.1) delta = h('span', { class: 'small ' + (d > 0 ? 'neg' : 'pos'), title: 'Media: ' + money(avg) }, (d > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(d) * 100) + ' %');
+          if (Math.abs(d) >= 0.1) delta = h('span', { class: 'small ' + (d > 0 ? 'neg' : 'pos'), title: 'Average: ' + money(avg) }, (d > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(d) * 100) + '%');
         }
       }
       list.append(h('div', { class: 'row click', onclick: () => openCat(x.id) },
@@ -139,7 +139,7 @@ export function render(root, { state, ctx, params, navigate }) {
           h('div', { class: 'bar' }, h('div', { style: { width: share * 100 + '%', background: catColor(x) } }))),
         h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(x.v, { decimals: false })), delta)));
     }
-    if (expenseCats.length > 9) list.append(h('a', { class: 'small', href: '#/movimientos' + (period === 'mes' ? '?m=' + month : ''), style: { paddingTop: '8px' } }, `Ver las ${expenseCats.length} categorías`));
+    if (expenseCats.length > 9) list.append(h('a', { class: 'small', href: '#/movimientos' + (period === 'mes' ? '?m=' + month : ''), style: { paddingTop: '8px' } }, `See all ${expenseCats.length} categories`));
     catCard.append(h('div', { class: 'donut-wrap' }, donutEl, list));
   }
   grid.append(catCard);
@@ -152,35 +152,35 @@ export function render(root, { state, ctx, params, navigate }) {
   const recIn = [...ctx.recurring.values()].filter(r => r.sign > 0 && r.active);
   const recTotal = rec.reduce((a, r) => a + r.monthly, 0);
   const recCard = h('section', { class: 'card span-5' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'Pagos recurrentes'), h('span', { class: 'meta' }, money(recTotal, { decimals: false }) + '/mes · ' + money(recTotal * 12, { decimals: false }) + '/año')));
-  if (!rec.length) recCard.append(h('p', { class: 'muted small' }, 'Aún no hay suficiente historial. Con 3 meses de movimientos detecto suscripciones, recibos y cuotas.'));
+    h('div', { class: 'card-head' }, h('h2', {}, 'Recurring payments'), h('span', { class: 'meta' }, money(recTotal, { decimals: false }) + '/month · ' + money(recTotal * 12, { decimals: false }) + '/year')));
+  if (!rec.length) recCard.append(h('p', { class: 'muted small' }, 'Not enough history yet. With 3 months of transactions I can detect subscriptions, bills and memberships.'));
   const recList = h('div', { class: 'rows' });
   for (const r of rec.slice(0, 10)) {
     const cat = r.categoryId ? ctx.cats.get(r.categoryId) : null;
     recList.append(h('div', { class: 'row click', onclick: () => navigate('movimientos', { q: r.merchant, exact: '1' }) },
       catIcon(cat, 30),
-      h('div', { class: 'grow' }, h('div', { class: 'title' }, r.name), h('div', { class: 'desc' }, `${r.cadenceLabel} · próximo ~${dateLabel(r.next)}`)),
-      h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(r.typical)), r.cadence !== 'monthly' ? h('div', { class: 'small muted' }, money(r.monthly) + '/mes') : null)));
+      h('div', { class: 'grow' }, h('div', { class: 'title' }, r.name), h('div', { class: 'desc' }, `${r.cadenceLabel} · next ~${dateLabel(r.next)}`)),
+      h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(r.typical)), r.cadence !== 'monthly' ? h('div', { class: 'small muted' }, money(r.monthly) + '/month') : null)));
   }
-  if (rec.length > 10) recList.append(h('div', { class: 'small muted', style: { paddingTop: '8px' } }, `y ${rec.length - 10} más`));
+  if (rec.length > 10) recList.append(h('div', { class: 'small muted', style: { paddingTop: '8px' } }, `and ${rec.length - 10} more`));
   recCard.append(recList);
   if (recInvest.length) recCard.append(h('div', { class: 'small muted', style: { marginTop: '10px' } },
-    'Inversión periódica: ' + recInvest.map(r => `${r.name} (${money(r.monthly, { decimals: false })}/mes)`).join(', ')));
+    'Regular investing: ' + recInvest.map(r => `${r.name} (${money(r.monthly, { decimals: false })}/month)`).join(', ')));
   if (recIn.length) recCard.append(h('div', { class: 'small muted', style: { marginTop: '10px' } },
-    'Ingresos recurrentes: ' + recIn.map(r => `${r.name} (${money(r.monthly, { decimals: false })}/mes)`).join(', ')));
+    'Recurring income: ' + recIn.map(r => `${r.name} (${money(r.monthly, { decimals: false })}/month)`).join(', ')));
   grid.append(recCard);
 
   // ---------- one-offs ----------
   const inPeriod = state.transactions.filter(t => months.includes(monthKey(t.date)));
   const oneoffs = inPeriod.filter(t => natureOf(t, ctx) === 'oneoff').sort((a, b) => a.amount - b.amount);
   const ooCard = h('section', { class: 'card span-6' },
-    h('div', { class: 'card-head' }, h('h2', {}, 'Gastos puntuales'), h('span', { class: 'meta' }, money(total.byNature.oneoff || 0, { decimals: false }))));
-  if (!oneoffs.length) ooCard.append(h('p', { class: 'muted small' }, 'Ningún gasto puntual en este periodo.'));
+    h('div', { class: 'card-head' }, h('h2', {}, 'One-off expenses'), h('span', { class: 'meta' }, money(total.byNature.oneoff || 0, { decimals: false }))));
+  if (!oneoffs.length) ooCard.append(h('p', { class: 'muted small' }, 'No one-off expenses in this period.'));
   const ooList = h('div', { class: 'rows' });
   for (const t of oneoffs.slice(0, 8)) {
     const cat = t.categoryId ? ctx.cats.get(t.categoryId) : null;
     ooList.append(h('div', { class: 'row' }, catIcon(cat, 30),
-      h('div', { class: 'grow' }, h('div', { class: 'title' }, t.merchantName), h('div', { class: 'desc' }, dateLabel(t.date, period === 'año') + ' · ' + (cat?.name || 'Sin categoría'))),
+      h('div', { class: 'grow' }, h('div', { class: 'title' }, t.merchantName), h('div', { class: 'desc' }, dateLabel(t.date, period === 'año') + ' · ' + (cat?.name || 'Uncategorized'))),
       h('div', { class: 'amount' }, money(-t.amount))));
   }
   ooCard.append(ooList);
@@ -191,14 +191,14 @@ export function render(root, { state, ctx, params, navigate }) {
   if (tripSpend.size) {
     const tripTotal = [...tripSpend.values()].reduce((a, b) => a + b, 0);
     grid.append(h('section', { class: 'card span-12' },
-      h('div', { class: 'card-head' }, h('h2', {}, 'Viajes en este periodo'), h('span', { class: 'meta' }, money(tripTotal, { decimals: false }) + ' · ' + pct(tripTotal / (total.expense || 1)) + ' del gasto')),
+      h('div', { class: 'card-head' }, h('h2', {}, 'Trips in this period'), h('span', { class: 'meta' }, money(tripTotal, { decimals: false }) + ' · ' + pct(tripTotal / (total.expense || 1)) + ' of spending')),
       h('div', { class: 'rows' }, [...tripSpend.entries()].map(([id, v]) => {
         const tr = state.trips.find(t => t.id === id);
         if (!tr) return null;
         return h('a', { class: 'row click', href: '#/viajes?id=' + id, style: { color: 'inherit', textDecoration: 'none' } },
           h('span', { style: { fontSize: '22px' } }, tr.emoji || '✈️'),
           h('div', { class: 'grow' }, h('div', { class: 'title' }, tr.name), h('div', { class: 'desc' }, `${dateLabel(tr.start)} – ${dateLabel(tr.end)}`)),
-          h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), tripBudget(tr) ? h('div', { class: 'small muted' }, 'presupuesto ' + money(tripBudget(tr), { decimals: false })) : null));
+          h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), tripBudget(tr) ? h('div', { class: 'small muted' }, 'budget ' + money(tripBudget(tr), { decimals: false })) : null));
       }))));
   }
 
@@ -206,14 +206,14 @@ export function render(root, { state, ctx, params, navigate }) {
   const merchants = Object.entries(total.byMerchant).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const nameOf = key => state.transactions.find(t => t.merchant === key)?.merchantName || key;
   const maxM = merchants[0]?.[1] || 1;
-  const mCard = h('section', { class: 'card span-6' }, h('div', { class: 'card-head' }, h('h2', {}, 'Dónde más gastas')));
+  const mCard = h('section', { class: 'card span-6' }, h('div', { class: 'card-head' }, h('h2', {}, 'Top merchants')));
   const mList = h('div', { class: 'rows' });
   for (const [key, v] of merchants) {
     const count = inPeriod.filter(t => t.merchant === key && t.amount < 0).length;
     mList.append(h('div', { class: 'row click', onclick: () => navigate('movimientos', { q: key, exact: '1', m: period === 'mes' ? month : '' }) },
       h('div', { class: 'grow' }, h('div', { class: 'title' }, nameOf(key)),
         h('div', { class: 'bar' }, h('div', { style: { width: (v / maxM * 100) + '%', background: 'var(--ink-2)' } }))),
-      h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), h('div', { class: 'small muted' }, count + (count === 1 ? ' pago' : ' pagos')))));
+      h('div', { style: { textAlign: 'right' } }, h('div', { class: 'amount' }, money(v, { decimals: false })), h('div', { class: 'small muted' }, count + (count === 1 ? ' payment' : ' payments')))));
   }
   mCard.append(mList);
   grid.append(mCard);
@@ -221,20 +221,20 @@ export function render(root, { state, ctx, params, navigate }) {
   // ---------- 50/30/20 ----------
   if (total.income > 0) {
     const rows = [
-      ['Necesidades', total.needs, 0.5, 'var(--c-fixed)'],
-      ['Deseos', total.wants, 0.3, 'var(--c-variable)'],
-      ['Ahorro e inversión', Math.max(0, total.income - total.needs - total.wants), 0.2, 'var(--c-invest)'],
+      ['Needs', total.needs, 0.5, 'var(--c-fixed)'],
+      ['Wants', total.wants, 0.3, 'var(--c-variable)'],
+      ['Saving & investing', Math.max(0, total.income - total.needs - total.wants), 0.2, 'var(--c-invest)'],
     ];
     grid.append(h('section', { class: 'card span-12' },
-      h('div', { class: 'card-head' }, h('h2', {}, 'Lectura 50/30/20'), h('span', { class: 'meta' }, 'sobre tus ingresos del periodo · solo orientativo')),
+      h('div', { class: 'card-head' }, h('h2', {}, '50/30/20 check'), h('span', { class: 'meta' }, 'against income for the period · a guide only')),
       h('div', { class: 'grid' }, rows.map(([label, v, ref, color]) => {
         const share = v / total.income;
         return h('div', { class: 'span-4' },
           h('div', { style: { display: 'flex', justifyContent: 'space-between' } }, h('b', {}, label), h('span', { class: 'num' }, pct(share))),
           h('div', { class: 'bar', style: { height: '8px' } }, h('div', { style: { width: Math.min(100, share * 100) + '%', background: color } })),
-          h('div', { class: 'small muted', style: { marginTop: '4px' } }, money(v, { decimals: false }) + ' · referencia ' + Math.round(ref * 100) + ' %'));
+          h('div', { class: 'small muted', style: { marginTop: '4px' } }, money(v, { decimals: false }) + ' · target ' + Math.round(ref * 100) + '%'));
       })),
-      h('p', { class: 'small muted', style: { margin: '12px 0 0' } }, 'Qué cuenta como necesidad o deseo se configura en cada categoría (Ajustes).'),
+      h('p', { class: 'small muted', style: { margin: '12px 0 0' } }, 'Whether a category counts as a need or a want is set per category (Settings).'),
     ));
   }
 }

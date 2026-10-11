@@ -7,11 +7,11 @@
 
 import { monthKey, monthRange, daysBetween, round2 } from './util.js';
 
-export const VALUE_LABELS = { need: 'Necesidad', want: 'Deseo', like: 'Capricho' };
+export const VALUE_LABELS = { need: 'Need', want: 'Want', like: 'Like' };
 export const VALUE_HELP = {
-  need: 'No podrías prescindir de ello',
-  want: 'Te aporta de verdad; lo mantendrías',
-  like: 'Evitable: no lo echarías de menos',
+  need: "You couldn't do without it",
+  want: "Genuinely adds value; you'd keep it",
+  like: "Avoidable: you wouldn't miss it",
 };
 
 export function coachSettings(state) {

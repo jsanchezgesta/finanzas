@@ -1,8 +1,8 @@
 {
   "name": "Finanzas",
   "short_name": "Finanzas",
-  "description": "Control y planificación de finanzas personales. Tus datos se quedan en tu dispositivo.",
-  "lang": "es",
+  "description": "Personal finance tracker and planner. Your data stays on your device.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

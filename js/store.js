@@ -1,7 +1,7 @@
 // App state, persisted locally in IndexedDB (falls back to localStorage).
 // Nothing leaves the device.
 
-import { defaultState, DEFAULT_CATEGORIES } from './defaults.js';
+import { defaultState, DEFAULT_CATEGORIES, LEGACY_CATEGORY_NAMES } from './defaults.js';
 import { TRIP_CATEGORIES } from './trips.js';
 
 const DB_NAME = 'finanzas';
@@ -49,6 +49,7 @@ export function migrate(s) {
   const out = { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), saveback: { ...base.settings.saveback, ...(s.settings?.saveback || {}) } } };
   // Add any default categories introduced in later versions.
   const ids = new Set(out.categories.map(c => c.id));
+  for (const c of out.categories) if (LEGACY_CATEGORY_NAMES[c.name]) c.name = LEGACY_CATEGORY_NAMES[c.name];
   const deleted = new Set(out.settings.deletedCategoryIds || []);
   for (const c of DEFAULT_CATEGORIES) if (!ids.has(c.id) && !deleted.has(c.id)) out.categories.push({ ...c });
   // Trip budgets are keyed by trip categories (vuelos, alojamiento…) since v5.
@@ -75,7 +76,7 @@ async function flush() {
   saveTimer = null;
   const snapshot = JSON.parse(JSON.stringify(state));
   try { await idbSet(snapshot); } catch {
-    try { localStorage.setItem(KEY, JSON.stringify(snapshot)); } catch (e) { console.error('No se pudo guardar', e); }
+    try { localStorage.setItem(KEY, JSON.stringify(snapshot)); } catch (e) { console.error('Could not save', e); }
   }
 }
 

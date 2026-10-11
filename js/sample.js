@@ -130,7 +130,7 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
 export function loadSample(state) {
   removeSample(state);
   const { caixaCSV, trCSV, londonStart } = sampleCSVs();
-  const files = [['ejemplo-caixabank.csv', 'CaixaBank (ejemplo)', 'CaixaBank', caixaCSV], ['ejemplo-trade-republic.csv', 'Trade Republic (ejemplo)', 'Trade Republic', trCSV]];
+  const files = [['sample-caixabank.csv', 'CaixaBank (sample)', 'CaixaBank', caixaCSV], ['sample-trade-republic.csv', 'Trade Republic (sample)', 'Trade Republic', trCSV]];
   for (const [fileName, name, bank, csv] of files) {
     const accountId = uid();
     state.accounts.push({ id: accountId, name, bank, sample: true });
@@ -157,12 +157,12 @@ export function loadSample(state) {
 
 function sampleTrip(state, londonStart) {
   state.trips = state.trips || [];
-  state.trips.push({ ...newTrip({ name: 'Londres', emoji: '🇬🇧', start: londonStart, end: addDays(londonStart, 3), budget: 900, catBudgets: { vuelos: 250, alojamiento: 380, comida: 150, transporte: 80, actividades: 40 } }), sample: true });
+  state.trips.push({ ...newTrip({ name: 'London', emoji: '🇬🇧', start: londonStart, end: addDays(londonStart, 3), budget: 900, catBudgets: { vuelos: 250, alojamiento: 380, comida: 150, transporte: 80, actividades: 40 } }), sample: true });
   const trip = state.trips[state.trips.length - 1];
   trip.items = [
     { id: uid(), name: 'Hotel (Booking)', tripCat: 'alojamiento', amount: 362, paid: true, txId: null },
-    { id: uid(), name: 'Seguro de viaje', tripCat: 'otros', amount: 24, paid: true, txId: null },
-    { id: uid(), name: 'Musical West End', tripCat: 'actividades', amount: 85, paid: false, txId: null },
+    { id: uid(), name: 'Travel insurance', tripCat: 'otros', amount: 24, paid: true, txId: null },
+    { id: uid(), name: 'West End musical', tripCat: 'actividades', amount: 85, paid: false, txId: null },
   ];
   assignTrips(state, buildContext(state));
 }

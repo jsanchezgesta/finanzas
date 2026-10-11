@@ -40,8 +40,8 @@ export function uid() {
   return 'id-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-const moneyFmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const moneyFmt0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const moneyFmt = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const moneyFmt0 = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 export function money(n, { decimals = true, sign = false } = {}) {
   const v = Number(n) || 0;
@@ -52,18 +52,18 @@ export function money(n, { decimals = true, sign = false } = {}) {
 export function moneyShort(n) {
   const v = Math.abs(Number(n) || 0);
   const s = (n < 0 ? '−' : '');
-  if (v >= 10000) return s + (v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' k€';
-  if (v >= 1000) return s + (v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' k€';
-  return s + v.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
+  if (v >= 10000) return s + '€' + (v / 1000).toLocaleString('en-IE', { maximumFractionDigits: 0 }) + 'k';
+  if (v >= 1000) return s + '€' + (v / 1000).toLocaleString('en-IE', { maximumFractionDigits: 1 }) + 'k';
+  return s + '€' + v.toLocaleString('en-IE', { maximumFractionDigits: 0 });
 }
 
 export function pct(n, digits = 0) {
   if (!isFinite(n) || Math.abs(n) > 9.99) return '—';
-  return (n * 100).toLocaleString('es-ES', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' %';
+  return (n * 100).toLocaleString('en-IE', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + '%';
 }
 
-const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function monthKey(date) { return String(date).slice(0, 7); }
 

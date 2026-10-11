@@ -40,8 +40,8 @@ export const TR_KIND_CATEGORY = {
 };
 
 export const TR_KIND_LABEL = {
-  card: 'Pago con tarjeta', fee: 'Comisión', saveback: 'Saveback', roundup: 'Redondeo', interest: 'Intereses',
-  dividend: 'Dividendo', tax: 'Impuestos', buy: 'Compra', sell: 'Venta', reward: 'Bono / regalo', transfer: 'Transferencia', other: 'Otro',
+  card: 'Card payment', fee: 'Fee', saveback: 'Saveback', roundup: 'Round-up', interest: 'Interest',
+  dividend: 'Dividend', tax: 'Tax', buy: 'Buy', sell: 'Sell', reward: 'Bonus / gift', transfer: 'Transfer', other: 'Other',
 };
 
 export function classifyTR({ category = '', type = '', assetClass = '', amount = 0, text = '' }) {
@@ -96,7 +96,7 @@ export function trRowsToTransactions(data, cols) {
 
     let label;
     if (kind === 'card') label = name || counterparty || desc;
-    else if (kind === 'transfer') label = [counterparty ? (amount > 0 ? 'Transferencia de ' : 'Transferencia a ') + counterparty : 'Transferencia', reference].filter(Boolean).join(' · ');
+    else if (kind === 'transfer') label = [counterparty ? (amount > 0 ? 'Transfer from ' : 'Transfer to ') + counterparty : 'Transfer', reference].filter(Boolean).join(' · ');
     else if (['buy', 'sell', 'saveback', 'roundup', 'reward', 'dividend'].includes(kind)) label = [TR_KIND_LABEL[kind], name || desc].filter(Boolean).join(' · ');
     else label = [TR_KIND_LABEL[kind], name || desc || counterparty].filter(Boolean).join(' · ');
 
