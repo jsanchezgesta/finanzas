@@ -1,0 +1,11 @@
+{
+  "name": "finanzas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal finance tracker and planner. Local-first, no server.",
+  "scripts": {
+    "start": "npx --yes serve -l 5173 .",
+    "test": "node --test test/*.test.js"
+  }
+}

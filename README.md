@@ -1,0 +1,60 @@
+# Finanzas
+
+Personal finance tracker and planner. You import your bank exports; the app categorizes, learns, and shows where the money goes.
+
+- **Local-first.** Data lives in your browser (IndexedDB). No server, no account, no bank connection.
+- **Installs on your phone** as an app (PWA) and works offline.
+- **No build step, no dependencies.** Plain HTML, CSS and JavaScript modules. Hosted on GitHub Pages.
+
+## What it does
+
+**Import.** Drop one or more CSV / XLS / XLSX exports. Column detection handles Spanish banks (preamble rows, `1.234,56` amounts, `dd/mm/yyyy` dates, separate cargo/abono columns, Windows-1252 encoding). The column mapping is saved per file format, so the second import from the same bank is one click. Overlapping exports are fine: duplicates are detected and skipped.
+
+**Categorize.** Every merchant is normalized ("COMPRA TARJ. 5402XXXX MERCADONA BARCELONA 12/10" → `mercadona`).
+- Known merchant (you confirmed it before) → categorized automatically.
+- New merchant → goes to **Revisar**, one card per merchant with a suggested category. One tap (or Enter) confirms every transaction of that merchant and saves a rule. Keyboard: `Enter` accept, `1–9` pick, `S` skip, `Z` undo.
+- Money moving between your own accounts (same amount out of one, into another within 4 days) is suggested as a transfer and excluded from spending.
+
+**Analyze.** Each expense is classified as:
+- **Fijo recurrente** — same merchant on a regular cadence (weekly → yearly) with a stable amount, or a fixed-type category (rent, utilities).
+- **Variable habitual** — day-to-day spending (groceries, transport, eating out).
+- **Puntual** — occasional or large (above a threshold you set, default 150 €).
+- **Inversión y ahorro** — anything in a saving/investment category.
+
+The dashboard shows income, spending, invested amount and savings rate; a 12-month trend; spend by category vs. your 3-month average; detected recurring payments with next expected date and yearly cost; one-off purchases; top merchants; and a 50/30/20 read-out.
+
+**Plan.** Zero-based monthly budget: expected income, then every euro assigned, savings first. Prefills from your 3-month average, shows plan vs. actual per category.
+
+## Run locally
+
+```bash
+npm start            # serves on http://localhost:5173 (or any static server)
+npm test             # unit tests (Node 20+, no install needed)
+```
+
+`samples/` has two example exports (CaixaBank-style and Trade Republic-style) to try the import. Or press "Probar con datos de ejemplo".
+
+## Deploy
+
+Push to `main`. The GitHub Actions workflow runs the tests and publishes the site to GitHub Pages. First time: repo **Settings → Pages → Source: GitHub Actions**.
+
+On your phone, open the Pages URL and use "Add to Home Screen".
+
+## Your data
+
+Everything stays in the browser where you use the app. Phone and laptop each have their own copy; use **Ajustes → Descargar copia / Restaurar copia** to move data between them, and download a backup now and then (clearing browser data deletes it).
+
+## Code map
+
+| File | What it does |
+|---|---|
+| `js/parse.js` | CSV parsing, number/date parsing, header and column detection |
+| `js/importer.js` | File reading (Excel via SheetJS, loaded on demand), dedupe, import/undo |
+| `js/merchant.js` | Description → merchant key |
+| `js/categorize.js` | Rules, keyword suggestions, transfer pairing, review queue |
+| `js/analysis.js` | Recurring detection, spend nature, monthly aggregates |
+| `js/defaults.js` | Default categories and keyword hints |
+| `js/store.js` | State and persistence (IndexedDB) |
+| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Importar, Ajustes |
+
+See [ROADMAP.md](ROADMAP.md) for phase 2 (finding savings).

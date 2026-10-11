@@ -1,0 +1,48 @@
+Date,Type,Description,Amount,Balance
+2025-11-01,Interest,"Interest payment",3.87,3.87
+2025-11-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-396.13
+2025-11-11,Card transaction,"DECATHLON DIAGONAL",-57.12,-453.25
+2025-11-20,Card transaction,"ZARA BARCELONA",-57.86,-511.11
+2025-11-21,Card transaction,"ZARA BARCELONA",-45.46,-556.57
+2025-11-29,Transfer,"Incoming transfer CaixaBank",500.00,-56.57
+2025-12-01,Interest,"Interest payment",4.56,-52.01
+2025-12-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-452.01
+2025-12-02,Card transaction,"ZARA BARCELONA",-24.85,-476.86
+2025-12-05,Card transaction,"UNIQLO PASSEIG",-33.41,-510.27
+2025-12-20,Card transaction,"DECATHLON DIAGONAL",-71.52,-581.79
+2025-12-29,Transfer,"Incoming transfer CaixaBank",500.00,-81.79
+2026-01-01,Interest,"Interest payment",4.52,-77.27
+2026-01-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-477.27
+2026-01-22,Card transaction,"DECATHLON DIAGONAL",-24.37,-501.64
+2026-01-29,Transfer,"Incoming transfer CaixaBank",500.00,-1.64
+2026-02-01,Interest,"Interest payment",6.16,4.52
+2026-02-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-395.48
+2026-03-01,Interest,"Interest payment",3.36,-392.12
+2026-03-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-792.12
+2026-03-29,Transfer,"Incoming transfer CaixaBank",500.00,-292.12
+2026-04-01,Interest,"Interest payment",4.23,-287.89
+2026-04-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-687.89
+2026-04-29,Transfer,"Incoming transfer CaixaBank",500.00,-187.89
+2026-05-01,Interest,"Interest payment",5.00,-182.89
+2026-05-01,Card transaction,"DECATHLON DIAGONAL",-52.34,-235.23
+2026-05-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-635.23
+2026-05-29,Transfer,"Incoming transfer CaixaBank",500.00,-135.23
+2026-06-01,Interest,"Interest payment",4.73,-130.50
+2026-06-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-530.50
+2026-06-14,Card transaction,"DECATHLON DIAGONAL",-49.60,-580.10
+2026-06-29,Transfer,"Incoming transfer CaixaBank",500.00,-80.10
+2026-07-01,Interest,"Interest payment",4.81,-75.29
+2026-07-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-475.29
+2026-07-29,Transfer,"Incoming transfer CaixaBank",500.00,24.71
+2026-08-01,Interest,"Interest payment",4.78,29.49
+2026-08-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-370.51
+2026-08-29,Transfer,"Incoming transfer CaixaBank",500.00,129.49
+2026-08-29,Card transaction,"DECATHLON DIAGONAL",-47.98,81.51
+2026-09-01,Interest,"Interest payment",4.74,86.25
+2026-09-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-313.75
+2026-09-07,Card transaction,"ZARA BARCELONA",-72.42,-386.17
+2026-09-17,Card transaction,"ZARA BARCELONA",-65.27,-451.44
+2026-09-17,Card transaction,"RYANAIR DAC",-94.98,-546.42
+2026-09-29,Transfer,"Incoming transfer CaixaBank",500.00,-46.42
+2026-10-01,Interest,"Interest payment",3.68,-42.74
+2026-10-02,Savings plan,"Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World",-400.00,-442.74
