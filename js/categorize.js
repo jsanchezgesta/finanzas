@@ -44,7 +44,14 @@ export function keywordSuggestion(tx, categories) {
 
 // Apply rules to fresh transactions (mutates them).
 export function categorizeNew(txs, state) {
+  const valid = new Set(state.categories.map(c => c.id));
   for (const tx of txs) {
+    // Rows whose type already says what they are (TR interest, Saveback,
+    // savings plan…) are categorized directly.
+    if (tx.forcedCategoryId && valid.has(tx.forcedCategoryId)) {
+      tx.categoryId = tx.forcedCategoryId; tx.status = 'auto'; tx.suggestedCategoryId = null;
+      continue;
+    }
     const rule = findRule(state.rules, tx);
     if (rule && state.categories.some(c => c.id === rule.categoryId)) {
       tx.categoryId = rule.categoryId;
@@ -55,7 +62,7 @@ export function categorizeNew(txs, state) {
     } else {
       tx.categoryId = null;
       tx.status = 'pending';
-      tx.suggestedCategoryId = keywordSuggestion(tx, state.categories);
+      tx.suggestedCategoryId = keywordSuggestion(tx, state.categories) || (valid.has(tx.mccCategoryId) ? tx.mccCategoryId : null);
     }
   }
   return txs;

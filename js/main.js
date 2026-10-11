@@ -7,12 +7,14 @@ import * as review from './views/review.js';
 import * as plan from './views/plan.js';
 import * as importer from './views/import.js';
 import * as settings from './views/settings.js';
+import * as inversion from './views/invest.js';
 
 const routes = {
   resumen: dashboard,
   movimientos: transactions,
   revisar: review,
   plan,
+  inversion,
   importar: importer,
   ajustes: settings,
 };

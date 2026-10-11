@@ -10,6 +10,8 @@
 export const DEFAULT_CATEGORIES = [
   { id: 'nomina', name: 'Nómina', kind: 'income', icon: '💼', color: '#2f9e6b' },
   { id: 'ingresos-otros', name: 'Otros ingresos', kind: 'income', icon: '➕', color: '#5fbf8f' },
+  { id: 'intereses', name: 'Intereses y dividendos', kind: 'income', icon: '💰', color: '#3fae7a' },
+  { id: 'saveback', name: 'Saveback y bonos', kind: 'income', reward: true, icon: '🎁', color: '#7cc79f' },
 
   { id: 'inversion', name: 'Inversión', kind: 'saving', icon: '📈', color: '#3b6fd9' },
   { id: 'ahorro', name: 'Ahorro', kind: 'saving', icon: '🏦', color: '#6d93e6' },
@@ -44,7 +46,7 @@ export const DEFAULT_CATEGORIES = [
 // Order matters: the first matching group wins.
 export const KEYWORD_HINTS = [
   ['traspaso', ['TRASPASO', 'TRANSFERENCIA ENTRE CUENTAS', 'TRANSFER TO OWN', 'OWN ACCOUNT', 'CUENTA PROPIA']],
-  ['inversion', ['SAVINGS PLAN', 'SPARPLAN', 'PLAN DE INVERSION', 'BUY TRADE', 'ORDEN DE COMPRA', 'COMPRA VALORES', 'SUSCRIPCION FONDO', 'INDEXA', 'MYINVESTOR', 'FINIZENS', 'INBESTME', 'SAVEBACK', 'ROUND UP', 'ETF', 'BROKER']],
+  ['inversion', ['SAVINGS PLAN', 'SPARPLAN', 'PLAN DE INVERSION', 'BUY TRADE', 'ORDEN DE COMPRA', 'COMPRA VALORES', 'SUSCRIPCION FONDO', 'INDEXA', 'MYINVESTOR', 'FINIZENS', 'INBESTME', 'ROUND UP', 'ETF', 'BROKER']],
   ['nomina', ['NOMINA', 'NÓMINA', 'SALARIO', 'PAYROLL', 'SALARY']],
   ['impuestos', ['AEAT', 'AGENCIA TRIBUTARIA', 'HACIENDA', 'IBI ', 'AJUNTAMENT', 'AYUNTAMIENTO', 'SEGURIDAD SOCIAL', 'TGSS', 'DGT ', 'TASA ']],
   ['comisiones', ['COMISION', 'COMISIÓN', 'MANTENIMIENTO CUENTA', 'CUOTA TARJETA', 'FEE ']],
@@ -66,7 +68,9 @@ export const KEYWORD_HINTS = [
   ['formacion', ['UDEMY', 'COURSERA', 'DOMESTIKA', 'PLATZI', 'UNIVERSIDAD', 'UNIVERSITAT', 'ACADEMIA', 'ESCUELA', 'MASTER ', 'CURSO']],
   ['vivienda', ['ALQUILER', 'LLOGUER', 'HIPOTECA', 'COMUNIDAD DE PROPIETARIOS', 'COMUNIDAD PROP', 'COMUNITAT', 'RENT ']],
   ['bizum', ['BIZUM ENVIADO', 'BIZUM A ', 'BIZUM PARA']],
-  ['ingresos-otros', ['BIZUM RECIBIDO', 'BIZUM DE ', 'DEVOLUCION HACIENDA', 'INTERESES', 'INTEREST', 'DIVIDEND', 'CASHBACK', 'ABONO']],
+  ['saveback', ['SAVEBACK', 'CASHBACK']],
+  ['intereses', ['INTERESES', 'INTEREST', 'DIVIDEND', 'DIVIDENDO', 'LIQUIDACION INTERESES']],
+  ['ingresos-otros', ['BIZUM RECIBIDO', 'BIZUM DE ', 'DEVOLUCION HACIENDA', 'ABONO']],
 ];
 
 export function defaultState() {
@@ -82,6 +86,8 @@ export function defaultState() {
     settings: {
       oneOffThreshold: 150,
       savingsGoalRate: 0.2,
+      // Trade Republic Saveback terms (editable in Ajustes; check TR's current conditions).
+      saveback: { rate: 0.01, spendCap: 1500, monthlyCap: 15, minPlan: 50 },
     },
   };
 }

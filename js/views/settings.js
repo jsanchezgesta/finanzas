@@ -44,6 +44,22 @@ export function render(root, { state }) {
       h('p', {}, h('b', {}, 'Inversión: '), 'todo lo que pongas en categorías de ahorro e inversión.'),
       h('p', { style: { marginBottom: 0 } }, 'Siempre puedes forzar el tipo de un movimiento concreto desde su ficha.'))));
 
+  // ---------- saveback ----------
+  const sbc = state.settings.saveback;
+  const sbInput = (key, step, scale = 1) => {
+    const i = h('input', { type: 'number', step, min: '0', value: Math.round(sbc[key] * scale * 100) / 100, style: { width: '100%' } });
+    i.addEventListener('change', () => update(s => { s.settings.saveback[key] = (Number(i.value) || 0) / scale; }));
+    return i;
+  };
+  grid.append(h('section', { class: 'card span-6' },
+    h('div', { class: 'card-head' }, h('h2', {}, 'Condiciones del Saveback')),
+    h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Valores de Trade Republic en España a septiembre de 2026. Cámbialos si TR los actualiza.'),
+    h('div', { class: 'map-grid' },
+      h('label', { class: 'field' }, h('span', {}, 'Porcentaje (%)'), sbInput('rate', '0.1', 100)),
+      h('label', { class: 'field' }, h('span', {}, 'Gasto máximo/mes (€)'), sbInput('spendCap', '50')),
+      h('label', { class: 'field' }, h('span', {}, 'Saveback máximo/mes (€)'), sbInput('monthlyCap', '1')),
+      h('label', { class: 'field' }, h('span', {}, 'Planes mínimos/mes (€)'), sbInput('minPlan', '10')))));
+
   // ---------- accounts ----------
   const accCard = h('section', { class: 'card span-6' }, h('div', { class: 'card-head' }, h('h2', {}, 'Cuentas')));
   if (!state.accounts.length) accCard.append(h('p', { class: 'small muted' }, 'Se crean al importar el primer extracto de cada banco.'));

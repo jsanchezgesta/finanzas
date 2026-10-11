@@ -85,14 +85,14 @@ async function next(view) {
     const state = getState();
     const { analysis, profile } = analyzeFile(state, rows);
     const accountExists = profile && state.accounts.some(a => a.id === profile.accountId);
-    const bank = guessBank(file.name, rows);
+    const bank = analysis.mapping.adapter === 'traderepublic' ? 'Trade Republic' : guessBank(file.name, rows);
     session.current = {
       file, rows, analysis, profile: accountExists ? profile : null,
       mapping: { ...analysis.mapping },
       accountId: accountExists ? profile.accountId : (state.accounts.length === 1 && !bank ? state.accounts[0].id : (state.accounts.find(a => a.bank && a.bank === bank)?.id || '_new')),
       newAccountName: bank || (state.accounts.length ? 'Cuenta ' + (state.accounts.length + 1) : 'Cuenta principal'),
       bank,
-      showMapping: !accountExists,
+      showMapping: !accountExists && analysis.mapping.adapter !== 'traderepublic',
     };
   } catch (e) {
     session.error = `No he podido leer «${file.name}»: ${e.message}`;
@@ -140,7 +140,13 @@ function mappingCard(view, cur) {
   const newName = h('input', { type: 'text', value: cur.newAccountName, placeholder: 'Nombre de la cuenta' });
   newName.addEventListener('input', () => { cur.newAccountName = newName.value; });
 
-  if (cur.showMapping || !cur.profile) {
+  if (cur.analysis.mapping.adapter === 'traderepublic' && !cur.showMapping) {
+    card.append(h('div', { class: 'banner ok', style: { marginBottom: '14px' } },
+      h('span', {}, h('b', {}, 'Extracto de Trade Republic. '), 'Intereses, planes de inversión, Saveback, dividendos y comisiones se categorizan solos; los pagos con tarjeta usan el código de comercio para sugerir la categoría.')));
+    if (!cur.profile) card.append(h('div', { class: 'map-grid', style: { marginBottom: '14px' } },
+      h('label', { class: 'field' }, h('span', {}, 'Cuenta'), accSel),
+      cur.accountId === '_new' ? h('label', { class: 'field' }, h('span', {}, 'Nombre de la nueva cuenta'), newName) : null));
+  } else if (cur.showMapping || !cur.profile) {
     card.append(h('div', { class: 'map-grid', style: { marginBottom: '14px' } },
       h('label', { class: 'field' }, h('span', {}, 'Cuenta'), accSel),
       cur.accountId === '_new' ? h('label', { class: 'field' }, h('span', {}, 'Nombre de la nueva cuenta'), newName) : null));
@@ -274,7 +280,7 @@ function tipsCard() {
     h('summary', { style: { cursor: 'pointer', fontWeight: 650 } }, 'Cómo descargar el extracto de tu banco'),
     h('ul', { class: 'small', style: { color: 'var(--ink-2)', marginBottom: 0, paddingLeft: '18px' } },
       h('li', {}, h('b', {}, 'CaixaBank: '), 'CaixaBankNow (web) → Cuentas → Movimientos → elige fechas → icono de descarga (Excel).'),
-      h('li', {}, h('b', {}, 'Trade Republic: '), 'Web o app → Perfil → Actividad / Transacciones → Exportar (CSV).'),
+      h('li', {}, h('b', {}, 'Trade Republic: '), 'app.traderepublic.com → Perfil → Transacciones → Exportar (CSV). Se reconoce automáticamente.'),
       h('li', {}, h('b', {}, 'Openbank, BBVA, Santander, ING, Revolut: '), 'busca «Descargar movimientos» o «Exportar» en la lista de movimientos de la web.'),
       h('li', {}, 'Si exportas periodos que se solapan no pasa nada: los duplicados se detectan y se omiten.'),
       h('li', {}, 'Con un mes al mes basta. Con 3 meses de historial empiezan a detectarse los pagos recurrentes.')));

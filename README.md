@@ -10,6 +10,8 @@ Personal finance tracker and planner. You import your bank exports; the app cate
 
 **Import.** Drop one or more CSV / XLS / XLSX exports. Column detection handles Spanish banks (preamble rows, `1.234,56` amounts, `dd/mm/yyyy` dates, separate cargo/abono columns, Windows-1252 encoding). The column mapping is saved per file format, so the second import from the same bank is one click. Overlapping exports are fine: duplicates are detected and skipped.
 
+**Trade Republic.** TR's transaction export (web app → Perfil → Transacciones → Exportar) is recognized automatically and deduplicated by transaction id. Interest, savings plans, buys/sells, Saveback, round-ups, dividends and fees are categorized without review; card payments get a category suggestion from their merchant code (MCC). FX fees and dividend withholding are netted into the cash amount.
+
 **Categorize.** Every merchant is normalized ("COMPRA TARJ. 5402XXXX MERCADONA BARCELONA 12/10" → `mercadona`).
 - Known merchant (you confirmed it before) → categorized automatically.
 - New merchant → goes to **Revisar**, one card per merchant with a suggested category. One tap (or Enter) confirms every transaction of that merchant and saves a rule. Keyboard: `Enter` accept, `1–9` pick, `S` skip, `Z` undo.
@@ -22,6 +24,8 @@ Personal finance tracker and planner. You import your bank exports; the app cate
 - **Inversión y ahorro** — anything in a saving/investment category.
 
 The dashboard shows income, spending, invested amount and savings rate; a 12-month trend; spend by category vs. your 3-month average; detected recurring payments with next expected date and yearly cost; one-off purchases; top merchants; and a 50/30/20 read-out.
+
+**Inversión.** Contributions per month (own money, round-ups, Saveback), interest and dividends earned, and positions per asset (shares, invested, approximate value at the last price seen in your exports). A Saveback tracker shows this month's TR card spend against the 1,500 € cap, the Saveback you're generating, whether your savings plans meet the 50 €/month condition, and how much Saveback you left on the table by paying with other banks' cards. Saveback terms are editable in Ajustes.
 
 **Plan.** Zero-based monthly budget: expected income, then every euro assigned, savings first. Prefills from your 3-month average, shows plan vs. actual per category.
 
@@ -53,8 +57,10 @@ Everything stays in the browser where you use the app. Phone and laptop each hav
 | `js/merchant.js` | Description → merchant key |
 | `js/categorize.js` | Rules, keyword suggestions, transfer pairing, review queue |
 | `js/analysis.js` | Recurring detection, spend nature, monthly aggregates |
+| `js/tr.js`, `js/mcc.js` | Trade Republic export reader, MCC → category |
+| `js/invest.js` | Investment summary, positions, Saveback status |
 | `js/defaults.js` | Default categories and keyword hints |
 | `js/store.js` | State and persistence (IndexedDB) |
-| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Importar, Ajustes |
+| `js/views/*` | Resumen, Movimientos, Revisar, Plan, Inversión, Importar, Ajustes |
 
 See [ROADMAP.md](ROADMAP.md) for phase 2 (finding savings).

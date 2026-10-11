@@ -1,10 +1,10 @@
 // Offline support: serve the app shell from cache, refresh it in the background.
-const VERSION = 'finanzas-v1';
+const VERSION = 'finanzas-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'icons/icon.svg', 'icons/icon-192.png',
   'js/main.js', 'js/util.js', 'js/store.js', 'js/defaults.js', 'js/parse.js', 'js/merchant.js', 'js/categorize.js',
-  'js/analysis.js', 'js/importer.js', 'js/charts.js', 'js/ui.js', 'js/sample.js',
-  'js/views/dashboard.js', 'js/views/transactions.js', 'js/views/review.js', 'js/views/plan.js', 'js/views/import.js', 'js/views/settings.js',
+  'js/analysis.js', 'js/tr.js', 'js/mcc.js', 'js/invest.js', 'js/importer.js', 'js/charts.js', 'js/ui.js', 'js/sample.js',
+  'js/views/dashboard.js', 'js/views/transactions.js', 'js/views/review.js', 'js/views/plan.js', 'js/views/import.js', 'js/views/settings.js', 'js/views/invest.js',
 ];
 
 self.addEventListener('install', e => {

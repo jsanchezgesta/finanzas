@@ -36,6 +36,15 @@ export function analyzeFile(state, rows) {
   return { analysis, profile };
 }
 
+// Investment rows group by kind + asset ("Compra · Vanguard FTSE All-World").
+function trMerchant(p) {
+  const kind = { buy: 'inversion', sell: 'inversion', roundup: 'redondeo', saveback: 'saveback', reward: 'saveback', interest: 'intereses', dividend: 'dividendos', fee: 'comisiones', tax: 'impuestos' }[p.tr.kind] || p.tr.kind;
+  const asset = (p.tr.asset || '').toLowerCase().replace(/[^a-z0-9áéíóúñü ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 4).join(' ');
+  const key = ('tr ' + kind + (asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' ' + asset : '')).trim();
+  const label = { inversion: 'Inversión', redondeo: 'Redondeo', saveback: 'Saveback', intereses: 'Intereses Trade Republic', dividendos: 'Dividendos', comisiones: 'Comisiones Trade Republic', impuestos: 'Impuestos Trade Republic' }[kind] || kind;
+  return { key, name: label + (p.tr.asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' · ' + p.tr.asset : '') };
+}
+
 function baseHash(accountId, t) {
   return [accountId, t.date, t.amount.toFixed(2), cleanDescription(t.description)].join('|');
 }
@@ -52,15 +61,26 @@ export function buildImport(state, analysis, mapping, accountId) {
   const seen = new Map();
   const fresh = [];
   let dupes = 0;
+  const existingIds = new Set(state.transactions.filter(t => t.accountId === accountId).map(t => t.hash));
   for (const p of parsed) {
-    const b = baseHash(accountId, p);
-    const i = seen.get(b) || 0;
-    seen.set(b, i + 1);
-    if (i < (existing.get(b) || 0)) { dupes++; continue; }
-    const m = normalizeMerchant(p.description);
+    let hash;
+    if (p.externalId) {
+      // Exports with a transaction id (Trade Republic) dedupe on that id.
+      hash = accountId + '|id|' + p.externalId;
+      if (existingIds.has(hash) || seen.has(hash)) { dupes++; continue; }
+      seen.set(hash, 1);
+    } else {
+      const b = baseHash(accountId, p);
+      const i = seen.get(b) || 0;
+      seen.set(b, i + 1);
+      if (i < (existing.get(b) || 0)) { dupes++; continue; }
+      hash = b + '#' + i;
+    }
+    const m = p.tr && p.tr.kind !== 'card' && p.tr.kind !== 'transfer' && p.tr.kind !== 'other'
+      ? trMerchant(p) : normalizeMerchant(p.description);
     fresh.push({
       id: uid(),
-      hash: b + '#' + i,
+      hash,
       accountId,
       date: p.date,
       amount: p.amount,
@@ -73,6 +93,7 @@ export function buildImport(state, analysis, mapping, accountId) {
       natureOverride: null,
       note: '',
       importId: null,
+      ...(p.tr ? { tr: p.tr, valueOnly: p.valueOnly || false, forcedCategoryId: p.forcedCategoryId || null, mccCategoryId: p.mccCategoryId || null } : {}),
     });
   }
   fresh.sort((a, b) => a.date.localeCompare(b.date));

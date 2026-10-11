@@ -45,7 +45,7 @@ async function idbSet(value) {
 
 export function migrate(s) {
   const base = defaultState();
-  const out = { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}) } };
+  const out = { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), saveback: { ...base.settings.saveback, ...(s.settings?.saveback || {}) } } };
   // Add any default categories introduced in later versions.
   const ids = new Set(out.categories.map(c => c.id));
   const deleted = new Set(out.settings.deletedCategoryIds || []);

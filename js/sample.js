@@ -25,14 +25,20 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
   const between = (a, b) => Math.round((a + r() * (b - a)) * 100) / 100;
   const start = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 12, 1)).toISOString().slice(0, 10);
   const caixa = [], tr = [];
-  const card = 'COMPRA TARJ. 5402XXXXXXXX7731';
+  const cardTx = 'COMPRA TARJ. 5402XXXXXXXX7731';
+  let trCard = 0, trCardPrev = 0;
 
   for (let d = start; d <= today; d = addDays(d, 1)) {
     const day = +d.slice(8, 10);
+    if (day === 1) { trCardPrev = trCard; trCard = 0; }
     const dow = new Date(d + 'T00:00:00Z').getUTCDay();
     const month = +d.slice(5, 7);
     const C = (mov, mas, amt) => caixa.push([d, mov, mas, amt]);
-    const T = (type, desc, amt) => tr.push([d, type, desc, amt]);
+    // Trade Republic rows use TR's export schema.
+    const T = o => tr.push({ date: d, ...o });
+    const card = (name, amt, mcc) => T({ category: 'CASH', type: 'CARD_TRANSACTION', name, amount: amt, mcc });
+    // In the last 4 months most day-to-day card spending moved to Trade Republic.
+    const onTR = d >= addDays(today, -120);
 
     if (day === 1) C('TRANSFERENCIA A FAVOR DE', 'ALQUILER PISO GRACIA - M. FERRER', -1050);
     if (day === 3) C('RECIBO DIGI SPAIN TELECOM', 'FIBRA Y MOVIL', -25);
@@ -43,48 +49,67 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
     if (day === 12) C('RECIBO ENDESA ENERGIA', 'FACTURA LUZ', -between(38, 92));
     if (day === 15 && month % 3 === 1) C('RECIBO AIGUES DE BARCELONA', 'FACTURA AGUA', -between(41, 58));
     if (day === 20 && month === 3) C('RECIBO SEGURCAIXA ADESLAS', 'SEGURO HOGAR ANUAL', -212.4);
-    if (day === 2) C(card, 'TMB T-USUAL BARCELONA', -21.35);
+    if (day === 2) C(cardTx, 'TMB T-USUAL BARCELONA', -21.35);
     if (day === 27) C('TRANSFERENCIA A FAVOR DE', 'NOMINA EMPRESA EJEMPLO SL', 2680);
     if (day === 28) C('TRANSFERENCIA INMEDIATA', 'A TRADE REPUBLIC BANK - INVERSION', -500);
 
-    if (dow === 6 || (dow === 3 && r() < 0.6)) C(card, pick(['MERCADONA BARCELONA', 'MERCADONA SA', 'MERCADONA C/ VERDI']), -between(28, 96));
-    if (dow === 1 && r() < 0.7) C(card, 'BONPREU ESCLAT GRACIA', -between(12, 45));
-    if (r() < 0.16) C(card, pick(['BAR LA PEPITA', 'CAFE CAMELIA', 'GRANJA M. VIADER', 'RESTAURANTE CAN CISA', 'TAPAS 24 BARCELONA', 'SUSHI ITTEKI']), -between(6, 58));
-    if (r() < 0.06) C(card, pick(['GLOVO*PEDIDO', 'JUST EAT ES']), -between(14, 32));
-    if (r() < 0.05) C(card, pick(['AMZN MKTP ES*2K4J23HV1', 'AMZN MKTP ES*7Q1P09ZA2', 'AMAZON.ES COMPRA']), -between(9, 75));
+    if (dow === 6 || (dow === 3 && r() < 0.6)) {
+      const a = -between(28, 96);
+      if (onTR) { trCard += -a; card('MERCADONA BARCELONA', a, '5411'); } else C(cardTx, pick(['MERCADONA BARCELONA', 'MERCADONA SA', 'MERCADONA C/ VERDI']), a);
+    }
+    if (dow === 1 && r() < 0.7) C(cardTx, 'BONPREU ESCLAT GRACIA', -between(12, 45));
+    if (r() < 0.16) {
+      const a = -between(6, 58), n = pick(['BAR LA PEPITA', 'CAFE CAMELIA', 'GRANJA M. VIADER', 'RESTAURANTE CAN CISA', 'TAPAS 24 BARCELONA', 'SUSHI ITTEKI']);
+      if (onTR) { trCard += -a; card(n, a, '5812'); } else C(cardTx, n, a);
+    }
+    if (r() < 0.06) C(cardTx, pick(['GLOVO*PEDIDO', 'JUST EAT ES']), -between(14, 32));
+    if (r() < 0.05) C(cardTx, pick(['AMZN MKTP ES*2K4J23HV1', 'AMZN MKTP ES*7Q1P09ZA2', 'AMAZON.ES COMPRA']), -between(9, 75));
     if (r() < 0.04) C('BIZUM ENVIADO A', pick(['LAURA GIL', 'PAU MARTI', 'MARTA RIUS']), -between(8, 40));
     if (r() < 0.02) C('BIZUM RECIBIDO DE', pick(['LAURA GIL', 'PAU MARTI']), between(10, 35));
-    if (r() < 0.03) C(card, pick(['FARMACIA SALVA', 'FARMACIA DIAGONAL']), -between(4, 28));
-    if (r() < 0.025) C(card, pick(['REPSOL ES 4521', 'CABIFY *TRIP', 'RENFE VIAJEROS']), -between(9, 48));
-    if (r() < 0.02) C(card, pick(['CINESA DIAGONAL', 'FNAC TRIANGLE', 'CASA DEL LIBRO']), -between(9, 35));
+    if (r() < 0.03) C(cardTx, pick(['FARMACIA SALVA', 'FARMACIA DIAGONAL']), -between(4, 28));
+    if (r() < 0.025) C(cardTx, pick(['REPSOL ES 4521', 'CABIFY *TRIP', 'RENFE VIAJEROS']), -between(9, 48));
+    if (r() < 0.02) C(cardTx, pick(['CINESA DIAGONAL', 'FNAC TRIANGLE', 'CASA DEL LIBRO']), -between(9, 35));
 
     // TR account: invested money in, savings plan out, a bit of card use.
-    if (day === 29) T('Transfer', 'Incoming transfer CaixaBank', 500);
-    if (day === 2) T('Savings plan', 'Savings plan execution IE00BK5BQT80 Vanguard FTSE All-World', -400);
-    if (day === 1) T('Interest', 'Interest payment', between(3.1, 6.2));
-    if (r() < 0.05) T('Card transaction', pick(['ZARA BARCELONA', 'UNIQLO PASSEIG', 'DECATHLON DIAGONAL']), -between(19, 79));
+    if (day === 29) T({ category: 'CASH', type: 'TRANSFER_INSTANT_INBOUND', amount: 500, counterparty: 'JAVIER EJEMPLO', reference: 'INVERSION' });
+    if (day === 2) {
+      const price = between(118, 141);
+      T({ category: 'TRADING', type: 'SAVINGS_PLAN', assetClass: 'FUND', name: 'Vanguard FTSE All-World UCITS ETF (Acc)', symbol: 'IE00BK5BQT80', price, shares: 400 / price, amount: -400 });
+      if (trCardPrev > 0) {
+        const sb = Math.min(15, Math.round(Math.min(trCardPrev, 1500) * 0.01 * 100) / 100);
+        T({ category: 'TRADING', type: 'SAVEBACK', assetClass: 'FUND', name: 'Vanguard FTSE All-World UCITS ETF (Acc)', symbol: 'IE00BK5BQT80', price, shares: sb / price, amount: 0 });
+      }
+      trCardPrev = 0;
+    }
+    if (day === 1) T({ category: 'CASH', type: 'INTEREST_PAYMENT', amount: between(3.1, 6.2) });
+    if (r() < 0.05) { const a = -between(19, 79); trCard += -a; card(pick(['ZARA BARCELONA', 'UNIQLO PASSEIG', 'DECATHLON DIAGONAL']), a, '5651'); }
   }
 
   // One-off purchases scattered over the year.
   const oneOffs = [
-    [40, 'C', card, 'IKEA BADALONA', -428.9], [75, 'C', card, 'VUELING AIRLINES', -186.4], [130, 'C', card, 'BOOKING.COM HOTEL', -362],
-    [190, 'C', card, 'MEDIA MARKT DIAGONAL', -899], [240, 'C', card, 'CLINICA DENTAL SANT GERVASI', -120], [300, 'C', 'RECIBO AEAT', 'IRPF FRACCIONADO', -312.55],
-    [320, 'T', 'Card transaction', 'RYANAIR DAC', -94.98],
+    [40, 'C', cardTx, 'IKEA BADALONA', -428.9], [75, 'C', cardTx, 'VUELING AIRLINES', -186.4], [130, 'C', cardTx, 'BOOKING.COM HOTEL', -362],
+    [190, 'C', cardTx, 'MEDIA MARKT DIAGONAL', -899], [240, 'C', cardTx, 'CLINICA DENTAL SANT GERVASI', -120], [300, 'C', 'RECIBO AEAT', 'IRPF FRACCIONADO', -312.55],
+    [320, 'T', 'CARD_TRANSACTION', 'RYANAIR DAC', -94.98],
   ];
   for (const [off, acc, a, b, amt] of oneOffs) {
     const d = addDays(start, off);
     if (d > today) continue;
-    (acc === 'C' ? caixa : tr).push(acc === 'C' ? [d, a, b, amt] : [d, a, b, amt]);
+    if (acc === 'C') caixa.push([d, a, b, amt]);
+    else tr.push({ date: d, category: 'CASH', type: a, name: b, amount: amt, mcc: '4511' });
   }
 
   caixa.sort((a, b) => b[0].localeCompare(a[0]));
-  tr.sort((a, b) => a[0].localeCompare(b[0]));
+  tr.sort((a, b) => a.date.localeCompare(b.date));
   let saldo = 4210.33;
   const caixaCSV = 'Movimientos de la cuenta ES91 2100 **** **** **** 4821;;;;;\n;;;;;\nFecha;Fecha valor;Movimiento;Más datos;Importe;Saldo\n' +
     caixa.map(([d, m, x, a]) => { const line = [dmy(d), dmy(d), m, x, fmtES(a), fmtES(saldo)].join(';'); saldo -= a; return line; }).join('\n') + '\n';
-  let bal = 0;
-  const trCSV = 'Date,Type,Description,Amount,Balance\n' +
-    tr.map(([d, t, desc, a]) => { bal += a; return [d, t, '"' + desc + '"', a.toFixed(2), bal.toFixed(2)].join(','); }).join('\n') + '\n';
+  const TR_HEADER = ['datetime', 'date', 'account_type', 'category', 'type', 'asset_class', 'name', 'symbol', 'shares', 'price', 'amount', 'fee', 'tax', 'currency', 'original_amount', 'original_currency', 'fx_rate', 'description', 'transaction_id', 'counterparty_name', 'counterparty_iban', 'payment_reference', 'mcc_code'];
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const trCSV = TR_HEADER.join(',') + '\n' + tr.map((o, i) => [
+    o.date + 'T10:' + String(i % 60).padStart(2, '0') + ':00.000000Z', o.date, 'DEFAULT', o.category, o.type, o.assetClass || '', o.name || '', o.symbol || '',
+    o.shares ? o.shares.toFixed(6) : '', o.price ? o.price.toFixed(4) : '', (o.amount ?? 0).toFixed(2), '', '', 'EUR', '', '', '', o.description || '',
+    'tx-' + o.date.replace(/-/g, '') + '-' + String(i).padStart(4, '0'), o.counterparty || '', '', o.reference || '', o.mcc || '',
+  ].map(q).join(',')).join('\n') + '\n';
   return { caixaCSV, trCSV };
 }
 
@@ -101,7 +126,7 @@ export function loadSample(state) {
   }
   // Pretend the user already reviewed most merchants; leave a few to try the review flow.
   const groups = reviewGroups(state);
-  const manual = { 'alquiler piso gracia': 'vivienda', 'tmb t usual': 'transporte', 'interest payment': 'ingresos-otros', 'incoming transfer caixabank': 'traspaso' };
+  const manual = { 'alquiler piso gracia': 'vivienda', 'tmb t usual': 'transporte' };
   const candidates = [...groups.filter(g => !g.suggestion && !manual[g.merchant]), ...groups.filter(g => g.suggestion && g.txs.length <= 6 && g.total < 0)];
   const leave = new Set(candidates.slice(0, 5).map(g => g.key));
   for (const g of groups) {

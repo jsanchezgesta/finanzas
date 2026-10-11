@@ -20,8 +20,9 @@ Data the analysis already provides: recurring merchants with cadence and amount,
 3. **Category creep.** Categories where the last 3 months are clearly above the previous 6 (e.g. delivery +40 %). Show the extra euros per year.
 4. **Small frequent spends.** Merchants with many small charges (coffee, delivery, Bizum) whose yearly total is surprisingly large.
 5. **Bank fees.** Any comisiones: total per year, and that most of them are avoidable.
-6. **Idle cash.** Balance left in current accounts month after month vs. what is planned for savings; suggest moving it to the savings/investment bucket.
-7. **Plan adherence.** Categories that go over plan most months: either cut or re-plan honestly.
+6. **Move spending to Trade Republic.** Already tracked: Saveback missed per month. Next: list which recurring charges on other banks (subscriptions, phone, gym) could be switched to the TR card, ranked by yearly Saveback gained.
+7. **Idle cash.** Balance left in current accounts month after month vs. what is planned for savings; suggest moving it to the savings/investment bucket.
+8. **Plan adherence.** Categories that go over plan most months: either cut or re-plan honestly.
 
 ### Output
 

@@ -43,6 +43,7 @@ export function detectRecurring(transactions, cats) {
   const latest = transactions.reduce((m, t) => (t.date > m ? t.date : m), '0000-00-00');
   const groups = new Map();
   for (const t of transactions) {
+    if (t.valueOnly) continue;
     const kind = kindOf(t, cats);
     if (kind === 'transfer') continue;
     const k = t.merchant + (t.amount < 0 ? '|-' : '|+');
@@ -137,6 +138,15 @@ export function summarize(ctx, months, { accountId = null } = {}) {
     const nature = natureOf(t, ctx);
     for (const b of [perMonth[mk], total]) {
       b.count++;
+      if (t.valueOnly) {
+        // Shares received without cash (Saveback, bonus shares): a reward that
+        // is invested at once, so it counts as income and as investment.
+        const cat = t.categoryId ? ctx.cats.get(t.categoryId) : null;
+        const v = t.tr?.value || 0;
+        if (cat?.kind === 'income') { b.income += v; b.byCategory[t.categoryId] = (b.byCategory[t.categoryId] || 0) + v; }
+        b.saving += v; b.byNature.investment += v;
+        continue;
+      }
       if (t.status === 'pending') b.pending++;
       if (nature === 'transfer') { b.transfer += t.amount; continue; }
       const catId = t.categoryId || (t.amount > 0 ? '_uncat_in' : '_uncat_out');

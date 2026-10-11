@@ -2,6 +2,7 @@
 // Pure functions (no DOM) so they can be unit-tested in Node.
 
 import { stripAccents } from './util.js';
+import { isTradeRepublic, trColumns, trRowsToTransactions } from './tr.js';
 
 /* ---------------- text decoding ---------------- */
 
@@ -305,10 +306,16 @@ export function analyzeRows(rows) {
     while (out.length < width) out.push('');
     return out;
   });
-  return { headerIdx, header, data, signature: headerSignature(header), mapping: detectMapping(header, data) };
+  let mapping;
+  if (isTradeRepublic(header)) {
+    const cols = trColumns(header);
+    mapping = { adapter: 'traderepublic', cols, date: cols.date ?? cols.datetime, desc: [cols.name].filter(i => i != null), amount: cols.amount, debit: -1, credit: -1, balance: -1, invert: false, decimal: '.', dateOrder: 'dmy' };
+  } else mapping = detectMapping(header, data);
+  return { headerIdx, header, data, signature: headerSignature(header), mapping };
 }
 
 export function rowsToTransactions(data, mapping) {
+  if (mapping.adapter === 'traderepublic') return trRowsToTransactions(data, mapping.cols);
   const out = [];
   let skipped = 0;
   for (const r of data) {
