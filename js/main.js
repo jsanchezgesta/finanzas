@@ -11,6 +11,9 @@ import * as inversion from './views/invest.js';
 import * as viajes from './views/trips.js';
 import * as ahorro from './views/coach.js';
 import { reviewQueue } from './coach.js';
+import { sync, startSync } from './syncApp.js';
+import { needsAttention, conflictSheet, unlockSheet, signIn } from './views/sync.js';
+import { toast } from './ui.js';
 
 const routes = {
   resumen: dashboard,
@@ -80,6 +83,23 @@ function updateBadge() {
   if (cb) { cb.hidden = due === 0; cb.textContent = due > 99 ? '99+' : String(due); }
 }
 
+// Surface sync problems once per state change: a dot on Settings and a toast.
+function watchSync() {
+  let last = null;
+  sync.subscribe(st => {
+    const link = document.querySelector('.nav a[data-route="ajustes"]');
+    let dot = link?.querySelector('.sync-alert');
+    if (needsAttention(st) && link && !dot) link.append(dot = Object.assign(document.createElement('i'), { className: 'sync-alert', title: 'Sync needs attention' }));
+    if (!needsAttention(st)) dot?.remove();
+    if (st.state === last) return;
+    last = st.state;
+    if (st.state === 'conflict') conflictSheet();
+    else if (st.state === 'locked') toast('Enter your sync password to sync', { action: 'Unlock', onAction: unlockSheet, timeout: 8000 });
+    else if (st.state === 'auth') toast('Sign in to Google to sync', { action: 'Sign in', onAction: signIn, timeout: 8000 });
+    else if (st.state === 'idle' && st.action === 'pull') toast('Updated from your other device');
+  });
+}
+
 async function start() {
   await load();
   subscribe(() => {
@@ -92,6 +112,8 @@ async function start() {
   });
   window.addEventListener('hashchange', () => render());
   render();
+  watchSync();
+  startSync().catch(e => console.error('sync', e));
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

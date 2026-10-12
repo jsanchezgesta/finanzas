@@ -1,5 +1,5 @@
 // App state, persisted locally in IndexedDB (falls back to localStorage).
-// Nothing leaves the device.
+// Nothing leaves the device unless you turn on encrypted Google Drive sync.
 
 import { defaultState, DEFAULT_CATEGORIES, LEGACY_CATEGORY_NAMES } from './defaults.js';
 import { TRIP_CATEGORIES } from './trips.js';
@@ -12,6 +12,7 @@ let state = null;
 const listeners = new Set();
 let saveTimer = null;
 let dbPromise = null;
+const localListeners = new Set();
 
 function openDB() {
   if (dbPromise) return dbPromise;
@@ -25,28 +26,43 @@ function openDB() {
   return dbPromise;
 }
 
-async function idbGet() {
+// Generic key/value helpers (also used by sync for the vault key, which is a
+// non-extractable CryptoKey and can only live in IndexedDB).
+export async function kvGet(key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY);
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-async function idbSet(value) {
+export async function kvSet(key, value) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(value, KEY);
+    tx.objectStore(STORE).put(value, key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
+export async function kvDel(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+const idbGet = () => kvGet(KEY);
+const idbSet = v => kvSet(KEY, v);
+
 export function migrate(s) {
   const base = defaultState();
-  const out = { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), saveback: { ...base.settings.saveback, ...(s.settings?.saveback || {}) } } };
+  const out = { ...base, ...s, meta: { updatedAt: 0, ...(s.meta || {}) }, settings: { ...base.settings, ...(s.settings || {}), saveback: { ...base.settings.saveback, ...(s.settings?.saveback || {}) } } };
   // Add any default categories introduced in later versions.
   const ids = new Set(out.categories.map(c => c.id));
   for (const c of out.categories) if (LEGACY_CATEGORY_NAMES[c.name]) c.name = LEGACY_CATEGORY_NAMES[c.name];
@@ -82,19 +98,31 @@ async function flush() {
 
 export function update(fn) {
   const result = fn(state);
+  state.meta = { ...(state.meta || {}), updatedAt: Date.now() };
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 250);
   for (const l of listeners) l(state);
+  for (const l of localListeners) l(state);
   return result;
 }
 
-export function replaceState(next) {
+// Replace everything (restore a backup, or apply the copy from Drive).
+// fromSync keeps the incoming timestamp so it isn't re-uploaded as a change.
+export function replaceState(next, { fromSync = false } = {}) {
   state = migrate(next);
-  flush();
+  if (!fromSync) {
+    state.meta.updatedAt = Date.now();
+    for (const l of localListeners) l(state);
+  }
+  const done = flush();
   for (const l of listeners) l(state);
+  return done;
 }
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+// Only changes made on this device (used to trigger an upload).
+export function onLocalChange(fn) { localListeners.add(fn); return () => localListeners.delete(fn); }
+export function flushNow() { return flush(); }
 
 export async function requestPersistence() {
   try { if (navigator.storage?.persist) return await navigator.storage.persist(); } catch { /* ignore */ }

@@ -3,13 +3,15 @@ import { update, replaceState, getState } from '../store.js';
 import { openSheet, catIcon, toast, KIND_LABELS } from '../ui.js';
 import { loadSample, removeSample } from '../sample.js';
 import { defaultState } from '../defaults.js';
+import { syncCard } from './sync.js';
 
 export function render(root, { state }) {
   root.append(h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Settings'),
-    h('div', { class: 'sub' }, 'Your data is stored only in this browser. Back it up now and then.'))));
+    h('div', { class: 'sub' }, 'Your data lives in this browser. Turn on sync to use it on other devices, and back it up now and then.'))));
 
   const grid = h('div', { class: 'grid' });
   root.append(grid);
+  grid.append(syncCard());
 
   // ---------- backup ----------
   const fileIn = h('input', { type: 'file', accept: '.json,application/json', hidden: true });

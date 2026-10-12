@@ -332,3 +332,18 @@ tr:last-child td { border-bottom: 0; }
 }
 .toast button { background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; padding: 0; }
 @media (prefers-color-scheme: light) { .toast button { color: #8fe0bd; } }
+
+/* ---------- sync ---------- */
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack .check { align-items: flex-start; font-size: 14px; }
+.stack .check input { flex: none; margin-top: 1px; }
+.stack .btn.lg { height: auto; min-height: 48px; padding: 10px 16px; text-align: left; justify-content: flex-start; white-space: normal; }
+.notice { background: var(--warn-soft); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.sync-status { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 4px; }
+.sync-status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pos); flex: none; }
+.sync-status.syncing .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.sync-status.locked .dot, .sync-status.auth .dot, .sync-status.conflict .dot { background: var(--warn); }
+.sync-status.error .dot { background: var(--neg); }
+@keyframes pulse { 50% { opacity: .35; } }
+.nav a .sync-alert { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-left: auto; }
+@media (max-width: 820px) { .nav a .sync-alert { position: absolute; top: 4px; left: 50%; margin-left: 8px; } }

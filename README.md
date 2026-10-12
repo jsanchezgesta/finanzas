@@ -53,6 +53,15 @@ On your phone, open the Pages URL and use "Add to Home Screen".
 
 Everything stays in the browser where you use the app. Phone and laptop each have their own copy; use **Settings → Download backup / Restore backup** to move data between them, and download a backup now and then (clearing browser data deletes it).
 
+### Sync across devices (optional)
+
+**Settings → Sync across devices → Connect Google Drive** keeps an encrypted copy in an `App Finanzas` folder in your Google Drive, so the same data appears on your phone and computer.
+
+- Your sync password encrypts everything in the browser (PBKDF2-SHA256 → AES-GCM-256). Google only stores ciphertext. If you lose the password, the Drive copy cannot be recovered.
+- The app only has access to files it creates (Google Drive scope `drive.file`).
+- Changes sync a few seconds after you make them, and when you open the app. If both devices changed since their last sync, you choose which copy to keep.
+- Setup needs a Google OAuth **Web client ID** in `js/config.js` (`GOOGLE_CLIENT_ID`), with `https://jsanchezgesta.github.io` as an authorised JavaScript origin, and the Drive API enabled.
+
 ## Code map
 
 | File | What it does |
