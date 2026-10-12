@@ -3,6 +3,7 @@
 
 import { stripAccents } from './util.js';
 import { isTradeRepublic, trColumns, trRowsToTransactions } from './tr.js';
+import { isCaixa, caixaColumns, caixaRowsToTransactions, accountLabel } from './caixa.js';
 
 /* ---------------- text decoding ---------------- */
 
@@ -310,12 +311,20 @@ export function analyzeRows(rows) {
   if (isTradeRepublic(header)) {
     const cols = trColumns(header);
     mapping = { adapter: 'traderepublic', cols, date: cols.date ?? cols.datetime, desc: [cols.name].filter(i => i != null), amount: cols.amount, debit: -1, credit: -1, balance: -1, invert: false, decimal: '.', dateOrder: 'dmy' };
+  } else if (isCaixa(header)) {
+    const cols = caixaColumns(header);
+    mapping = { adapter: 'caixabank', cols, date: cols.date, desc: [], amount: -1, debit: -1, credit: -1, balance: -1, invert: false, decimal: '.', dateOrder: 'dmy' };
   } else mapping = detectMapping(header, data);
-  return { headerIdx, header, data, signature: headerSignature(header), mapping };
+  // A CaixaBank file holds one account per split; the account key keeps
+  // saved import profiles separate for each of them.
+  const accountKey = mapping.adapter === 'caixabank' && data[0] ? accountLabel(data[0][mapping.cols.account]) : '';
+  const label = accountKey;
+  return { headerIdx, header, data, label, signature: headerSignature(header) + (accountKey ? '|' + accountKey : ''), mapping };
 }
 
 export function rowsToTransactions(data, mapping) {
   if (mapping.adapter === 'traderepublic') return trRowsToTransactions(data, mapping.cols);
+  if (mapping.adapter === 'caixabank') return caixaRowsToTransactions(data, mapping.cols);
   const out = [];
   let skipped = 0;
   for (const r of data) {

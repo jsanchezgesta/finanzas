@@ -96,6 +96,7 @@ export function buildImport(state, analysis, mapping, accountId) {
       note: '',
       importId: null,
       ...(p.tr ? { tr: p.tr, valueOnly: p.valueOnly || false, forcedCategoryId: p.forcedCategoryId || null, mccCategoryId: p.mccCategoryId || null } : {}),
+      ...(p.tr || p.ownTransfer === undefined ? {} : { forcedCategoryId: p.forcedCategoryId || null, ownTransfer: !!p.ownTransfer }),
     });
   }
   fresh.sort((a, b) => a.date.localeCompare(b.date));
@@ -108,7 +109,8 @@ export function commitImport(state, { fresh, dupes, skipped }, { fileName, accou
   categorizeNew(fresh, state);
   state.transactions.push(...fresh);
   state.transactions.sort((a, b) => b.date.localeCompare(a.date));
-  const transfers = detectTransfers(state.transactions) + detectOwnTransfers(state);
+  // Own-account transfers first, so pairing can rely on them.
+  const transfers = detectOwnTransfers(state) + detectTransfers(state.transactions);
   if (state.trips?.length) assignTrips(state, buildContext(state));
   if (saveProfile && signature) state.importProfiles[signature] = { mapping, accountId, updatedAt: Date.now() };
   const auto = fresh.filter(t => t.status === 'auto').length;

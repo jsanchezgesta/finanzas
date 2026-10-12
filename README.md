@@ -49,6 +49,12 @@ Push to `main`. The GitHub Actions workflow runs the tests and publishes the sit
 
 On your phone, open the Pages URL and use "Add to Home Screen".
 
+## Bank files
+
+- **Trade Republic:** the transaction export (CSV). Interest, savings plans, Saveback, dividends and fees are categorized automatically.
+- **CaixaBank:** the movements export (XLS or CSV). One file can hold several accounts; each becomes its own account. Card purchases and direct debits are categorized from their descriptions.
+- **Transfers between your own accounts** (CaixaBank "TRASPASO PROPIO", Trade Republic transfers, and payments to your own name) are shown as "Transfer between accounts". They don't count as income or spending. Bank-labelled ones are settled automatically; a suggestion needs one tap to confirm.
+
 ## Your data
 
 Everything stays in the browser where you use the app. Phone and laptop each have their own copy; use **Settings → Download backup / Restore backup** to move data between them, and download a backup now and then (clearing browser data deletes it).

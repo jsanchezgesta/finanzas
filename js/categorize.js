@@ -62,7 +62,7 @@ export function categorizeNew(txs, state) {
     } else {
       tx.categoryId = null;
       tx.status = 'pending';
-      tx.suggestedCategoryId = keywordSuggestion(tx, state.categories) || (valid.has(tx.mccCategoryId) ? tx.mccCategoryId : null);
+      tx.suggestedCategoryId = (tx.ownTransfer ? 'traspaso' : null) || keywordSuggestion(tx, state.categories) || (valid.has(tx.mccCategoryId) ? tx.mccCategoryId : null);
     }
   }
   return txs;
@@ -89,6 +89,14 @@ export function detectTransfers(allTxs, { maxDays = 4 } = {}) {
       (o.status === 'pending' || o.categoryId === 'traspaso'));
     if (match) {
       t.suggestedCategoryId = 'traspaso';
+      // The other side is already known to be a transfer (the bank marked it,
+      // or it was paired before): this side is settled too, no review needed.
+      // Both sides are your own transfers (each one says so): settle the pair.
+      const ownBoth = t.ownTransfer && match.ownTransfer;
+      if (t.status === 'pending' && (match.categoryId === 'traspaso' || ownBoth) && (t.ownTransfer || t.tr?.kind === 'transfer')) {
+        t.categoryId = 'traspaso'; t.status = 'auto';
+      }
+      if (match.status === 'pending' && ownBoth) { match.categoryId = 'traspaso'; match.status = 'auto'; }
       if (match.status === 'pending') match.suggestedCategoryId = 'traspaso';
       t.transferPairId = match.id;
       match.transferPairId = t.id;

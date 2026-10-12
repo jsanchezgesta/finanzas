@@ -5,6 +5,7 @@
 import { h, clear, money, dateLabel, uid } from '../util.js';
 import { getState, update, requestPersistence } from '../store.js';
 import { readFileRows, analyzeFile, buildImport, commitImport, undoImport } from '../importer.js';
+import { splitByAccount } from '../caixa.js';
 import { findRule, keywordSuggestion } from '../categorize.js';
 import { toast } from '../ui.js';
 import { loadSample } from '../sample.js';
@@ -55,7 +56,7 @@ function draw(view) {
     }
   }
 
-  view.append(tipsCard(), historyCard(view));
+  view.append(...[tipsCard(), historyCard(view)].filter(Boolean));
 }
 
 function dropZone(view) {
@@ -76,23 +77,40 @@ async function enqueue(view, files) {
   if (!session.current) await next(view);
 }
 
+// Queue entries are files, or pieces of a file already split by account.
 async function next(view) {
-  const file = session.queue.shift();
-  if (!file) { session.current = null; draw(view); return; }
+  const entry = session.queue.shift();
+  if (!entry) { session.current = null; draw(view); return; }
+  const file = entry.file || entry;
   try {
-    const rows = await readFileRows(file);
+    let rows = entry.rows || await readFileRows(file);
     if (!rows.length) throw new Error('The file is empty.');
+    let label = entry.label || '';
+    if (!entry.rows) {
+      // One CaixaBank file can hold several accounts: one card per account.
+      const parts = splitByAccount(rows);
+      if (parts && parts.length > 1) {
+        session.queue.unshift(...parts.slice(1).map(p => ({ file, rows: p.rows, label: p.label })));
+        rows = parts[0].rows;
+        label = parts[0].label;
+      }
+    }
     const state = getState();
     const { analysis, profile } = analyzeFile(state, rows);
     const accountExists = profile && state.accounts.some(a => a.id === profile.accountId);
-    const bank = analysis.mapping.adapter === 'traderepublic' ? 'Trade Republic' : guessBank(file.name, rows);
+    const adapter = analysis.mapping.adapter;
+    const bank = adapter === 'traderepublic' ? 'Trade Republic' : adapter === 'caixabank' ? 'CaixaBank' : guessBank(file.name, rows);
+    const sameLabel = label && state.accounts.find(a => a.name === label);
     session.current = {
       file, rows, analysis, profile: accountExists ? profile : null,
       mapping: { ...analysis.mapping },
-      accountId: accountExists ? profile.accountId : (state.accounts.length === 1 && !bank ? state.accounts[0].id : (state.accounts.find(a => a.bank && a.bank === bank)?.id || '_new')),
-      newAccountName: bank || (state.accounts.length ? 'Account ' + (state.accounts.length + 1) : 'Main account'),
+      accountId: accountExists ? profile.accountId
+        : sameLabel ? sameLabel.id
+        : adapter === 'caixabank' ? '_new'
+        : (state.accounts.length === 1 && !bank ? state.accounts[0].id : (state.accounts.find(a => a.bank && a.bank === bank)?.id || '_new')),
+      newAccountName: label || bank || (state.accounts.length ? 'Account ' + (state.accounts.length + 1) : 'Main account'),
       bank,
-      showMapping: !accountExists && analysis.mapping.adapter !== 'traderepublic',
+      showMapping: !accountExists && adapter !== 'traderepublic' && adapter !== 'caixabank',
     };
   } catch (e) {
     session.error = `Couldn't read “${file.name}”: ${e.message}`;
@@ -107,7 +125,7 @@ function mappingCard(view, cur) {
   const { analysis } = cur;
   const header = analysis.header;
   const accountId = cur.accountId === '_new' ? '__preview__' : cur.accountId;
-  const valid = cur.mapping.date >= 0 && (cur.mapping.amount >= 0 || cur.mapping.debit >= 0 || cur.mapping.credit >= 0) && cur.mapping.desc.length;
+  const valid = cur.mapping.adapter === 'caixabank' || (cur.mapping.date >= 0 && (cur.mapping.amount >= 0 || cur.mapping.debit >= 0 || cur.mapping.credit >= 0) && cur.mapping.desc.length);
   const built = valid ? buildImport(state, analysis, cur.mapping, accountId) : { fresh: [], dupes: 0, skipped: analysis.data.length, parsedCount: 0 };
   let autoCount = 0, suggested = 0;
   const previewCats = new Map();
@@ -141,7 +159,14 @@ function mappingCard(view, cur) {
   const newName = h('input', { type: 'text', value: cur.newAccountName, placeholder: 'Account name' });
   newName.addEventListener('input', () => { cur.newAccountName = newName.value; });
 
-  if (cur.analysis.mapping.adapter === 'traderepublic' && !cur.showMapping) {
+  const adapter = cur.analysis.mapping.adapter;
+  if (adapter === 'caixabank' && !cur.showMapping) {
+    card.append(h('div', { class: 'banner ok', style: { marginBottom: '14px' } },
+      h('span', {}, h('b', {}, 'CaixaBank statement. '), 'Card purchases and direct debits are categorized from the description. Transfers between your own accounts (“TRASPASO PROPIO” and Trade Republic) are not counted as income or spending.')));
+    if (!cur.profile) card.append(h('div', { class: 'map-grid', style: { marginBottom: '14px' } },
+      h('label', { class: 'field' }, h('span', {}, 'Account'), accSel),
+      cur.accountId === '_new' ? h('label', { class: 'field' }, h('span', {}, 'New account name'), newName) : null));
+  } else if (adapter === 'traderepublic' && !cur.showMapping) {
     card.append(h('div', { class: 'banner ok', style: { marginBottom: '14px' } },
       h('span', {}, h('b', {}, 'Trade Republic statement. '), 'Interest, savings plans, Saveback, dividends and fees are categorized automatically; card payments use the merchant code to suggest a category.')));
     if (!cur.profile) card.append(h('div', { class: 'map-grid', style: { marginBottom: '14px' } },

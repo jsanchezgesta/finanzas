@@ -109,6 +109,8 @@ export function natureOf(tx, ctx) {
   const cat = tx.categoryId ? ctx.cats.get(tx.categoryId) : null;
   const kind = cat ? cat.kind : (tx.amount > 0 ? 'income' : 'expense');
   if (kind === 'transfer') return 'transfer';
+  // A suggested transfer between your own accounts is not spending until you confirm it.
+  if (!cat && tx.ownTransfer && tx.status === 'pending') return 'transfer';
   if (kind === 'income') return 'income';
   if (kind === 'saving') return 'investment';
   if (tx.natureOverride) return tx.natureOverride;
