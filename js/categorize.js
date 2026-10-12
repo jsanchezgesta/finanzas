@@ -98,6 +98,49 @@ export function detectTransfers(allTxs, { maxDays = 4 } = {}) {
   return paired.size / 2;
 }
 
+// Transfers between your own accounts, without needing the other bank's
+// statement: a counterparty that both sends money to and receives money from
+// the same account is you. Name variants (
+// "Juan Perez", "J A Perez") match when they share a surname and the
+// first name or its initial.
+function nameTokens(n) {
+  return cleanDescription(n).replace(/[.,\-]/g, ' ').split(' ').filter(t => t.length > 0 && !['DE', 'DEL', 'LA', 'Y', 'I'].includes(t));
+}
+
+function samePerson(a, b) {
+  const x = nameTokens(a), y = nameTokens(b);
+  if (!x.length || !y.length) return false;
+  const firstOk = x[0] === y[0] || (x[0][0] === y[0][0] && (x[0].length === 1 || y[0].length === 1));
+  const surname = x.slice(1).some(t => t.length >= 3 && y.slice(1).includes(t));
+  return firstOk && surname;
+}
+
+export function ownNames(state, accountId) {
+  const ins = new Set(), outs = new Set();
+  for (const t of state.transactions) {
+    const cp = t.tr?.counterparty;
+    if (!cp || (accountId && t.accountId !== accountId)) continue;
+    (t.amount > 0 ? ins : outs).add(cp);
+  }
+  const owners = [...ins].filter(a => [...outs].some(b => samePerson(a, b)));
+  return owners;
+}
+
+export function detectOwnTransfers(state) {
+  const byAccount = new Map();
+  for (const t of state.transactions) if (t.tr?.counterparty) byAccount.set(t.accountId, true);
+  let n = 0;
+  for (const accountId of byAccount.keys()) {
+    const owners = ownNames(state, accountId);
+    if (!owners.length) continue;
+    for (const t of state.transactions) {
+      if (t.accountId !== accountId || t.status !== 'pending' || !t.tr?.counterparty) continue;
+      if (owners.some(o => samePerson(o, t.tr.counterparty))) { t.suggestedCategoryId = 'traspaso'; t.ownTransfer = true; n++; }
+    }
+  }
+  return n;
+}
+
 export function upsertRule(state, merchantKey, categoryId, nature = null) {
   let rule = state.rules.find(r => r.type === 'merchant' && r.match === merchantKey);
   if (rule) { rule.categoryId = categoryId; rule.nature = nature; rule.updatedAt = Date.now(); }
@@ -145,8 +188,8 @@ export function reviewGroups(state) {
   const groups = new Map();
   for (const t of state.transactions) {
     if (t.status !== 'pending') continue;
-    const key = t.transferPairId ? 'transfer:' + t.id : t.merchant;
-    if (!groups.has(key)) groups.set(key, { key, merchant: t.merchant, name: t.merchantName, txs: [], suggestion: null });
+    const key = t.ownTransfer ? 'own-transfers' : t.transferPairId ? 'transfer:' + t.id : t.merchant;
+    if (!groups.has(key)) groups.set(key, { key, merchant: t.merchant, name: t.ownTransfer ? 'Transfers between your accounts' : t.merchantName, txs: [], suggestion: null, own: !!t.ownTransfer });
     groups.get(key).txs.push(t);
   }
   for (const g of groups.values()) {

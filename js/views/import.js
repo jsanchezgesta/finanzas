@@ -112,6 +112,7 @@ function mappingCard(view, cur) {
   let autoCount = 0, suggested = 0;
   const previewCats = new Map();
   for (const t of built.fresh) {
+    if (t.forcedCategoryId) { autoCount++; previewCats.set(t.id, { id: t.forcedCategoryId, auto: true }); continue; }
     const r = findRule(state.rules, t);
     if (r) { autoCount++; previewCats.set(t.id, { id: r.categoryId, auto: true }); continue; }
     const sug = keywordSuggestion(t, state.categories);

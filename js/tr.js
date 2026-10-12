@@ -55,7 +55,7 @@ export function classifyTR({ category = '', type = '', assetClass = '', amount =
   if (/DIVIDEND|DISTRIBUTION|COUPON|AUSSCH/.test(t)) return 'dividend';
   if (/TAX|STEUER/.test(t) && !assetClass) return 'tax';
   if (/FREE_RECEIPT|BONUS|REWARD|GIFT|STOCKPERK|DELIVERY/.test(t)) return 'reward';
-  if (/SAVINGS_PLAN|SPARPLAN|BUY|PURCHASE|KAUF/.test(t)) return 'buy';
+  if (/SAVINGS_PLAN|SPARPLAN|BUY|PURCHASE|KAUF|IPO|SUBSCRIPTION/.test(t)) return 'buy';
   if (/SELL|VERKAUF/.test(t)) return 'sell';
   if (/TRADING|TRADE|ORDER/.test(t) || assetClass) return amount > 0 ? 'sell' : 'buy';
   if (/TRANSFER|DEPOSIT|PAYIN|PAYOUT|WITHDRAW|SEPA|INSTANT|UBERWEISUNG|ÜBERWEISUNG/.test(t)) return 'transfer';
@@ -80,7 +80,11 @@ export function trRowsToTransactions(data, cols) {
     const shares = Math.abs(num(r, 'shares'));
     const price = Math.abs(num(r, 'price'));
     const name = String(get(r, 'name') || '').trim();
-    const counterparty = String(get(r, 'counterparty_name') || '').trim();
+    const descRaw = String(get(r, 'description') || '');
+    // Transfers often only carry the name inside the description:
+    // "Incoming transfer from NAME (IBAN)" / "Outgoing transfer for NAME (IBAN)".
+    const fromDesc = (descRaw.match(/(?:transfer (?:from|for|to))\s+(.+?)\s*(?:\(|$)/i) || [])[1] || '';
+    const counterparty = String(get(r, 'counterparty_name') || '').trim() || (/TRANSFER/i.test(String(get(r, 'type'))) ? (name || fromDesc).trim() : '');
     const desc = String(get(r, 'description') || '').trim();
     const reference = String(get(r, 'payment_reference') || '').trim();
     const assetClass = String(get(r, 'asset_class') || '').trim();
@@ -96,7 +100,7 @@ export function trRowsToTransactions(data, cols) {
 
     let label;
     if (kind === 'card') label = name || counterparty || desc;
-    else if (kind === 'transfer') label = [counterparty ? (amount > 0 ? 'Transfer from ' : 'Transfer to ') + counterparty : 'Transfer', reference].filter(Boolean).join(' · ');
+    else if (kind === 'transfer') label = [counterparty || 'Transfer', reference].filter(Boolean).join(' · ');
     else if (['buy', 'sell', 'saveback', 'roundup', 'reward', 'dividend'].includes(kind)) label = [TR_KIND_LABEL[kind], name || desc].filter(Boolean).join(' · ');
     else label = [TR_KIND_LABEL[kind], name || desc || counterparty].filter(Boolean).join(' · ');
 
@@ -119,6 +123,9 @@ export function trRowsToTransactions(data, cols) {
         value,
         fee: fee || 0,
         tax: tax || 0,
+        gross: amount,
+        plan: /savings plan|sparplan|plan de inversi/i.test(desc) || /SAVINGS_PLAN|SPARPLAN/i.test(String(get(r, 'type'))),
+        counterparty: counterparty || null,
         mcc: String(get(r, 'mcc_code') || '').trim() || null,
         originalCurrency: String(get(r, 'original_currency') || '').trim().toUpperCase() || null,
         originalAmount: num(r, 'original_amount') || null,

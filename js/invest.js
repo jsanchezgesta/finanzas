@@ -8,7 +8,7 @@ export function isTRAccount(state, accountId) {
   return state.transactions.some(t => t.accountId === accountId && t.tr);
 }
 
-function bucket() { return { own: 0, saveback: 0, roundup: 0, interest: 0, dividends: 0, withdrawn: 0 }; }
+function bucket() { return { own: 0, saveback: 0, bonus: 0, roundup: 0, interest: 0, dividends: 0, withdrawn: 0 }; }
 
 // months: array of month keys, or null for all time.
 export function investmentSummary(state, months = null) {
@@ -18,29 +18,38 @@ export function investmentSummary(state, months = null) {
   const total = bucket();
   const assets = new Map();
   const sorted = [...state.transactions].sort((a, b) => a.date.localeCompare(b.date));
+  // Rows without a symbol (prepayments, Saveback cash) map to the symbol used
+  // elsewhere for the same asset name.
+  const symbolByName = new Map();
+  for (const t of sorted) if (t.tr?.symbol && t.tr?.asset) symbolByName.set(t.tr.asset, t.tr.symbol);
   for (const t of sorted) {
     const mk = monthKey(t.date);
     const kind = t.tr?.kind;
     const cat = t.categoryId ? cats.get(t.categoryId) : null;
+    const reward = kind === 'saveback' || kind === 'reward';
     let field = null, v = 0;
-    if (kind === 'saveback' || kind === 'reward') { field = 'saveback'; v = t.valueOnly ? t.tr.value : Math.abs(t.amount); }
+    if (reward) { field = kind === 'reward' ? 'bonus' : 'saveback'; v = t.valueOnly ? t.tr.value : (t.tr.gross || Math.abs(t.amount)); }
     else if (kind === 'roundup') { field = 'roundup'; v = -t.amount; }
-    else if (kind === 'buy') { field = 'own'; v = -t.amount; }
+    else if (kind === 'buy') { field = 'own'; v = -t.amount; } // IPO refunds are negative buys
     else if (kind === 'sell') { field = 'withdrawn'; v = t.amount; }
     else if (kind === 'dividend') { field = 'dividends'; v = t.amount; }
     else if (kind === 'interest' || (!kind && t.categoryId === 'intereses' && t.amount > 0)) { field = 'interest'; v = t.amount; }
     else if (!kind && cat?.kind === 'saving') { field = 'own'; v = -t.amount; } // e.g. transfers to Indexa/MyInvestor from another bank
     if (!field) continue;
 
-    // Positions (all time, regardless of the selected period).
-    if (t.tr && (t.tr.symbol || t.tr.asset) && ['buy', 'sell', 'saveback', 'reward', 'roundup'].includes(kind)) {
-      const key = t.tr.symbol || t.tr.asset;
-      if (!assets.has(key)) assets.set(key, { key, symbol: t.tr.symbol, name: t.tr.asset || t.tr.symbol, shares: 0, invested: 0, fromSaveback: 0, lastPrice: null, lastDate: null, count: 0 });
+    // Positions (all time): only rows that move shares. Cash prepayments,
+    // refunds and Saveback cash don't; their settlements do.
+    if (t.tr?.shares && ['buy', 'sell', 'saveback', 'reward', 'roundup'].includes(kind)) {
+      const key = t.tr.symbol || symbolByName.get(t.tr.asset) || t.tr.asset;
+      if (!assets.has(key)) assets.set(key, { key, symbol: t.tr.symbol || symbolByName.get(t.tr.asset) || null, name: t.tr.asset || key, shares: 0, invested: 0, fromSaveback: 0, lastPrice: null, lastDate: null, count: 0 });
       const a = assets.get(key);
-      const sign = kind === 'sell' ? -1 : 1;
-      if (t.tr.shares) a.shares += sign * t.tr.shares;
-      a.invested += kind === 'sell' ? -t.amount : (t.valueOnly ? t.tr.value : -t.amount);
-      if (kind === 'saveback' || kind === 'reward') a.fromSaveback += t.valueOnly ? t.tr.value : Math.abs(t.amount);
+      const cost = t.amount < 0 ? -t.amount : (t.tr.value || 0);
+      if (kind === 'sell') { a.shares -= t.tr.shares; a.invested -= t.amount; }
+      else {
+        a.shares += t.tr.shares;
+        a.invested += cost;
+        if (reward) a.fromSaveback += cost;
+      }
       if (t.tr.price) { a.lastPrice = t.tr.price; a.lastDate = t.date; }
       a.count++;
     }
@@ -72,16 +81,17 @@ export function savebackStatus(state, month) {
   const nextMonth = addMonths(month, 1);
   for (const t of state.transactions) {
     const mk = monthKey(t.date);
-    if (mk === nextMonth && (t.tr?.kind === 'saveback')) received += t.valueOnly ? t.tr.value : Math.abs(t.amount);
+    if (mk === nextMonth && (t.tr?.kind === 'saveback')) received += t.valueOnly ? t.tr.value : (t.tr.gross || Math.abs(t.amount));
     if (mk !== month) continue;
     if (t.tr?.kind === 'card') trCardSpend -= t.amount;
-    else if (t.tr?.kind === 'buy') { buys -= t.amount; if (/SAVINGS_PLAN|SPARPLAN/i.test(t.tr.type)) plan -= t.amount; }
+    else if (t.tr?.kind === 'buy') { buys -= t.amount; if (t.tr.plan || /SAVINGS_PLAN|SPARPLAN/i.test(t.tr.type)) plan -= t.amount; }
     else if (!t.tr && t.amount < 0 && CARD_TEXT.test(t.description.toUpperCase())) {
       const cat = t.categoryId ? cats.get(t.categoryId) : null;
       if (!cat || cat.kind === 'expense') otherCardSpend -= t.amount;
     }
   }
-  const planAmount = plan || buys;
+  // Only savings-plan executions count towards the Saveback condition.
+  const planAmount = plan;
   const eligible = Math.max(0, Math.min(trCardSpend, cfg.spendCap));
   const expected = round2(Math.min(cfg.monthlyCap, eligible * cfg.rate));
   const room = Math.max(0, cfg.spendCap - eligible);

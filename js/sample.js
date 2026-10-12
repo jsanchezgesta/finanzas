@@ -73,7 +73,7 @@ export function sampleCSVs(today = new Date().toISOString().slice(0, 10)) {
     if (r() < 0.02) C(cardTx, pick(['CINESA DIAGONAL', 'FNAC TRIANGLE', 'CASA DEL LIBRO']), -between(9, 35));
 
     // TR account: invested money in, savings plan out, a bit of card use.
-    if (day === 29) T({ category: 'CASH', type: 'TRANSFER_INSTANT_INBOUND', amount: 500, counterparty: 'JAVIER EJEMPLO', reference: 'INVERSION' });
+    if (day === 29) T({ category: 'CASH', type: 'TRANSFER_INSTANT_INBOUND', amount: 500, counterparty: 'JUAN EJEMPLO', reference: 'INVERSION' });
     if (day === 2) {
       const price = between(118, 141);
       T({ category: 'TRADING', type: 'SAVINGS_PLAN', assetClass: 'FUND', name: 'Vanguard FTSE All-World UCITS ETF (Acc)', symbol: 'IE00BK5BQT80', price, shares: 400 / price, amount: -400 });

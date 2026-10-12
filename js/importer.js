@@ -2,7 +2,7 @@
 
 import { decodeBytes, parseCSV, analyzeRows, rowsToTransactions } from './parse.js';
 import { normalizeMerchant, cleanDescription } from './merchant.js';
-import { categorizeNew, detectTransfers } from './categorize.js';
+import { categorizeNew, detectTransfers, detectOwnTransfers } from './categorize.js';
 import { uid } from './util.js';
 import { buildContext } from './analysis.js';
 import { assignTrips } from './trips.js';
@@ -40,10 +40,10 @@ export function analyzeFile(state, rows) {
 
 // Investment rows group by kind + asset ("Compra · Vanguard FTSE All-World").
 function trMerchant(p) {
-  const kind = { buy: 'inversion', sell: 'inversion', roundup: 'redondeo', saveback: 'saveback', reward: 'saveback', interest: 'intereses', dividend: 'dividendos', fee: 'comisiones', tax: 'impuestos' }[p.tr.kind] || p.tr.kind;
+  const kind = { buy: 'inversion', sell: 'inversion', roundup: 'redondeo', saveback: 'saveback', reward: 'bonus', interest: 'intereses', dividend: 'dividendos', fee: 'comisiones', tax: 'impuestos' }[p.tr.kind] || p.tr.kind;
   const asset = (p.tr.asset || '').toLowerCase().replace(/[^a-z0-9áéíóúñü ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 4).join(' ');
   const key = ('tr ' + kind + (asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' ' + asset : '')).trim();
-  const label = { inversion: 'Investment', redondeo: 'Round-up', saveback: 'Saveback', intereses: 'Trade Republic interest', dividendos: 'Dividends', comisiones: 'Trade Republic fees', impuestos: 'Trade Republic tax' }[kind] || kind;
+  const label = { inversion: 'Investment', redondeo: 'Round-up', saveback: 'Saveback', bonus: 'Bonus', intereses: 'Trade Republic interest', dividendos: 'Dividends', comisiones: 'Trade Republic fees', impuestos: 'Trade Republic tax' }[kind] || kind;
   return { key, name: label + (p.tr.asset && !['intereses', 'comisiones', 'impuestos'].includes(kind) ? ' · ' + p.tr.asset : '') };
 }
 
@@ -108,7 +108,7 @@ export function commitImport(state, { fresh, dupes, skipped }, { fileName, accou
   categorizeNew(fresh, state);
   state.transactions.push(...fresh);
   state.transactions.sort((a, b) => b.date.localeCompare(a.date));
-  const transfers = detectTransfers(state.transactions);
+  const transfers = detectTransfers(state.transactions) + detectOwnTransfers(state);
   if (state.trips?.length) assignTrips(state, buildContext(state));
   if (saveProfile && signature) state.importProfiles[signature] = { mapping, accountId, updatedAt: Date.now() };
   const auto = fresh.filter(t => t.status === 'auto').length;

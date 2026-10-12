@@ -27,7 +27,7 @@ export function render(root, { state, params, navigate }) {
   const n = period === 'todo' ? Math.max(1, Object.keys(inv.perMonth).length) : 12;
   root.append(h('div', { class: 'kpis', style: { marginBottom: '16px' } },
     kpi('Contributed', money(t.own + t.roundup - t.withdrawn, { decimals: false }), 'avg ' + money((t.own + t.roundup - t.withdrawn) / n, { decimals: false }) + '/month'),
-    kpi('Saveback', money(t.saveback), 'free, as shares'),
+    kpi(t.bonus ? 'Saveback & bonuses' : 'Saveback', money(t.saveback + t.bonus), t.bonus ? `${money(t.saveback)} Saveback · ${money(t.bonus)} free shares` : 'free, as shares'),
     kpi('Interest', money(t.interest), 'avg ' + money(t.interest / n) + '/month'),
     kpi('Dividends', money(t.dividends), t.withdrawn ? 'sales: ' + money(t.withdrawn, { decimals: false }) : ' ')));
 
@@ -38,7 +38,7 @@ export function render(root, { state, params, navigate }) {
 
   // Monthly contributions
   const chartMonths = period === 'todo' ? Object.keys(inv.perMonth).sort() : months;
-  const pm = m => inv.perMonth[m] || { own: 0, saveback: 0, roundup: 0, interest: 0, dividends: 0 };
+  const pm = m => inv.perMonth[m] || { own: 0, saveback: 0, bonus: 0, roundup: 0, interest: 0, dividends: 0 };
   grid.append(h('section', { class: 'card span-12' },
     h('div', { class: 'card-head' }, h('h2', {}, 'Contributions by month'), h('span', { class: 'meta' }, 'line: interest + dividends')),
     chartMonths.length ? h('div', { class: 'chart', html: stackedBars({
@@ -46,7 +46,7 @@ export function render(root, { state, params, navigate }) {
       series: [
         { id: 'own', label: 'Own contributions', color: 'var(--c-invest)', values: chartMonths.map(m => pm(m).own) },
         { id: 'roundup', label: 'Round-ups', color: '#8fb4e3', values: chartMonths.map(m => pm(m).roundup) },
-        { id: 'saveback', label: 'Saveback', color: 'var(--c-income)', values: chartMonths.map(m => pm(m).saveback) },
+        { id: 'saveback', label: 'Saveback', color: 'var(--c-income)', values: chartMonths.map(m => pm(m).saveback + pm(m).bonus) },
       ],
       line: { label: 'Interest + dividends', color: 'var(--c-variable)', values: chartMonths.map(m => pm(m).interest + pm(m).dividends) },
     }) }) : h('p', { class: 'muted small' }, 'No contributions in this period.'),

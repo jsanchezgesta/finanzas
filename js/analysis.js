@@ -139,6 +139,9 @@ export function summarize(ctx, months, { accountId = null } = {}) {
     for (const b of [perMonth[mk], total]) {
       b.count++;
       if (t.valueOnly) {
+        // Settlements of something already paid (private markets, IPO
+        // allocations) were counted when the cash left; only free shares count.
+        if (!['saveback', 'reward'].includes(t.tr?.kind)) continue;
         // Shares received without cash (Saveback, bonus shares): a reward that
         // is invested at once, so it counts as income and as investment.
         const cat = t.categoryId ? ctx.cats.get(t.categoryId) : null;

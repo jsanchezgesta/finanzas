@@ -75,7 +75,7 @@ test('learned rules auto-categorize the next import; duplicates are skipped', ()
 test('internal transfers between accounts are paired', () => {
   const s = defaultState();
   importCsv(s, csvFor([['01/09/2026', 'TRANSFERENCIA A TRADE REPUBLIC', '-500,00']]), 'caixa');
-  importCsv(s, 'Date,Description,Amount\n2026-09-02,Incoming transfer from JAVIER,500.00\n', 'tr');
+  importCsv(s, 'Date,Description,Amount\n2026-09-02,Incoming transfer from JUAN,500.00\n', 'tr');
   const groups = reviewGroups(s);
   assert.ok(groups.every(g => g.suggestion === 'traspaso'));
 });
@@ -119,4 +119,15 @@ test('detects recurring payments and classifies spend nature', () => {
   assert.equal(total.income, 2500);
   assert.equal(Math.round(total.byNature.oneoff), 799);
   assert.equal(Math.round(total.byNature.fixed * 100) / 100, 963.99);
+});
+
+test('merchant codes, processors and display names', () => {
+  const m = d => normalizeMerchant(d);
+  assert.equal(m('GLOVO 27SEP BCPWR1YU').key, 'glovo');
+  assert.equal(m('GLOVO 09OCT BWJQGJKQ').key, 'glovo');
+  assert.equal(m('ANT*Trip.com').name, 'Trip');
+  assert.equal(m('SP PLAUD.AI ES').key, 'plaud ai');
+  assert.equal(m('LA OTRA').name, 'La Otra');
+  assert.equal(m('A-LAFOLIXE').name, 'A Lafolixe');
+  assert.equal(m('RESTAURANT EL PIRATA').name, 'Restaurant El Pirata');
 });

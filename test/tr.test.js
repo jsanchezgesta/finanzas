@@ -19,7 +19,7 @@ const CSV = [HEADER,
   row({ date: '2026-09-05', type: 'CARD_TRANSACTION', name: 'MERCADONA BARCELONA', amount: '-45.20', mcc: '5411', id: 'a4' }),
   row({ date: '2026-09-06', type: 'CARD_TRANSACTION_INTERNATIONAL', name: 'UBUD PASAR', amount: '-53.06', fee: '-1.00', mcc: '5812', id: 'a5' }),
   row({ date: '2026-09-07', type: 'CARD_ORDERING_FEE', amount: '-5.00', id: 'a6' }),
-  row({ date: '2026-09-10', type: 'TRANSFER_INSTANT_INBOUND', amount: '500.00', cp: 'JAVIER EJEMPLO', id: 'a7' }),
+  row({ date: '2026-09-10', type: 'TRANSFER_INSTANT_INBOUND', amount: '500.00', cp: 'JUAN EJEMPLO', id: 'a7' }),
   row({ date: '2026-09-15', category: 'TRADING', type: 'DIVIDEND', ac: 'STOCK', name: 'Apple Inc', amount: '2.40', tax: '-0.36', id: 'a8' }),
 ].join('\n');
 
@@ -104,4 +104,26 @@ test('Saveback shares count as income and investment; investment and Saveback su
   assert.equal(sb.trCardSpend, 99.26); // 45.20 + 54.06
   assert.equal(sb.planOk, true);
   assert.equal(sb.expected, 0.99);
+});
+
+test('own-account transfers are recognized from name variants without the other bank', async () => {
+  const { detectOwnTransfers, reviewGroups } = await import('../js/categorize.js');
+  const rows = [HEADER,
+    row({ date: '2026-04-15', type: 'TRANSFER_INSTANT_INBOUND', amount: '10000.00', desc: 'Incoming transfer from JUAN ANTONIO PEREZ LOPEZ (ES0000000000000000000001)', id: 'b1' }),
+    row({ date: '2026-05-12', type: 'TRANSFER_INSTANT_INBOUND', amount: '0.08', cp: 'J.A. Perez Lopez', desc: 'Incoming transfer from J.A. Perez Lopez (ES0000000000000000000002)', id: 'b2' }),
+    row({ date: '2026-06-01', type: 'TRANSFER_INSTANT_OUTBOUND', name: 'Juan Antonio Pérez López', amount: '-540.00', desc: 'Outgoing transfer for Juan Antonio Pérez López (ES0000000000000000000003)', id: 'b3' }),
+    row({ date: '2026-05-30', type: 'TRANSFER_INSTANT_OUTBOUND', name: 'Ana Example', amount: '-480.00', desc: 'Outgoing transfer for Ana Example (ES0000000000000000000004)', id: 'b4' }),
+    row({ date: '2026-06-12', category: 'CASH', type: 'IPO_SUBSCRIPTION', ac: 'STOCK', name: 'SpaceX', amount: '174.14', desc: '(partial reimbursement) IPO access pre-payment', id: 'b5' }),
+  ].join('\n');
+  const s = defaultState();
+  s.accounts.push({ id: 'tr', name: 'Trade Republic' });
+  importTR(s, rows);
+  const own = s.transactions.filter(t => t.ownTransfer).map(t => t.amount).sort((a, b) => a - b);
+  assert.deepEqual(own, [-540, 0.08, 10000]);
+  const g = reviewGroups(s).find(x => x.own);
+  assert.equal(g.suggestion, 'traspaso');
+  assert.equal(g.txs.length, 3);
+  // IPO refund is a negative buy, not a sale.
+  assert.equal(s.transactions.find(t => t.hash.endsWith('|id|b5')).tr.kind, 'buy');
+  assert.ok(detectOwnTransfers);
 });
