@@ -13,6 +13,8 @@ const OPTIONS = [
     icon: '<path d="M4 19h16"/><path d="M5 15l4-4 3 3 7-7"/><path d="M15 7h4v4"/>' },
   { route: 'plan', title: 'Go to plan', text: 'Your monthly budget and trips.',
     icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/>' },
+  { route: 'gastos', title: 'Spending tables', text: 'Recurring, day-to-day and larger expenses. Test view.',
+    icon: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M4 14.5h16M10 10v9"/>' },
 ];
 
 export function render(root, { state }) {

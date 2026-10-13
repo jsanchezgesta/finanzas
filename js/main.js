@@ -3,6 +3,7 @@ import { buildContext } from './analysis.js';
 import { clear } from './util.js';
 import * as home from './views/home.js';
 import * as dashboard from './views/dashboard.js';
+import * as gastos from './views/spending.js';
 import * as transactions from './views/transactions.js';
 import * as review from './views/review.js';
 import * as plan from './views/plan.js';
@@ -19,6 +20,7 @@ import { toast } from './ui.js';
 const routes = {
   inicio: home,
   resumen: dashboard,
+  gastos,
   movimientos: transactions,
   revisar: review,
   plan,
@@ -67,7 +69,7 @@ function render({ keepScroll = false } = {}) {
   current = { route, view };
   clear(main);
   view.render(main, { state: getState(), ctx: getContext(), params, navigate });
-  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === ({ viajes: 'plan', inversion: 'ahorro' }[route] || route)));
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === ({ viajes: 'plan', inversion: 'ahorro', gastos: 'resumen' }[route] || route)));
   if (keepScroll && same) {
     window.scrollTo(0, scroll);
     if (focusKey) main.querySelector(`[aria-label="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });

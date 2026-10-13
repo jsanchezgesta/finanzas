@@ -372,3 +372,20 @@ tr:last-child td { border-bottom: 0; }
   .home-head h1 { font-size: 26px; }
   .home-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- spending tables ---------- */
+.spend-controls { align-items: center; margin-bottom: 16px; }
+.spend-controls .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.spend-card { margin-bottom: 16px; }
+.spend-table td.name { white-space: normal; min-width: 140px; }
+.spend-table td.name > div:first-child { font-weight: 600; }
+.spend-table td.date { color: var(--muted); }
+.spend-table .amount { font-weight: 650; font-variant-numeric: tabular-nums; }
+.spend-table tfoot td { font-weight: 650; background: var(--surface-2); border-bottom: 0; }
+.spend-cat { display: inline-flex; align-items: center; gap: 8px; }
+.spend-cat .cat-ico { font-size: 12px; border-radius: 7px; }
+.acc-role { max-width: 170px; }
+@media (max-width: 560px) {
+  .spend-table .hide-sm { display: none; }
+  .acc-role { max-width: 120px; }
+}

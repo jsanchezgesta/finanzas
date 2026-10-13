@@ -1,4 +1,5 @@
 import { h, uid, money } from '../util.js';
+import { ACCOUNT_ROLES } from '../buckets.js';
 import { update, replaceState, getState } from '../store.js';
 import { openSheet, catIcon, toast, KIND_LABELS } from '../ui.js';
 import { loadSample, removeSample } from '../sample.js';
@@ -84,6 +85,8 @@ export function render(root, { state }) {
     const n = state.transactions.filter(t => t.accountId === a.id).length;
     return h('div', { class: 'row' },
       h('div', { class: 'grow' }, h('div', { class: 'title' }, a.name), h('div', { class: 'desc' }, n + ' transactions' + (a.bank ? ' · ' + a.bank : ''))),
+      h('select', { class: 'acc-role', 'aria-label': 'What ' + a.name + ' is used for', onchange: e => update(s => { s.accounts.find(x => x.id === a.id).role = e.target.value || null; }) },
+        h('option', { value: '' }, 'Used for…'), ACCOUNT_ROLES.map(([v, l]) => h('option', { value: v, selected: a.role === v }, l))),
       h('button', { class: 'btn sm ghost', onclick: () => { const name = prompt('Account name', a.name); if (name) update(s => { s.accounts.find(x => x.id === a.id).name = name.trim(); }); } }, 'Rename'),
       h('button', { class: 'btn sm ghost danger', onclick: () => {
         if (!confirm(`Delete “${a.name}” and its ${n} transactions?`)) return;
