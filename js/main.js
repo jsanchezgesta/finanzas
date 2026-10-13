@@ -1,6 +1,7 @@
 import { load, subscribe, getState } from './store.js';
 import { buildContext } from './analysis.js';
 import { clear } from './util.js';
+import * as home from './views/home.js';
 import * as dashboard from './views/dashboard.js';
 import * as transactions from './views/transactions.js';
 import * as review from './views/review.js';
@@ -16,6 +17,7 @@ import { needsAttention, conflictSheet, unlockSheet, signIn } from './views/sync
 import { toast } from './ui.js';
 
 const routes = {
+  inicio: home,
   resumen: dashboard,
   movimientos: transactions,
   revisar: review,
@@ -40,7 +42,7 @@ export function parseHash() {
   const raw = location.hash.replace(/^#\/?/, '');
   const [path, query = ''] = raw.split('?');
   const params = Object.fromEntries(new URLSearchParams(query));
-  return { route: routes[path] ? path : (getState().transactions.length ? 'resumen' : 'importar'), params };
+  return { route: routes[path] ? path : 'inicio', params };
 }
 
 export function navigate(route, params = {}) {
