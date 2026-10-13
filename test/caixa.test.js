@@ -116,3 +116,16 @@ test('a Trade Republic outflow pairs with the CaixaBank inflow, in either import
     assert.equal(total.income, 2500, order);
   }
 });
+
+test('card merchants that mix words and numbers keep their name', () => {
+  const rows = [
+    HEADER,
+    A({ date: '10/10/2026', out: '1.75', common: '12', own: '040', ref2: '4800000000000001', comp: ['SUPER PALCK 2', '', '', '', '', '', '', '', '', '04000022SIO                           COMPRA CON TARJETA'] }),
+    A({ date: '05/10/2026', out: '15.49', common: '12', own: '040', ref2: '4800000000000001', comp: ['Glovo 05OCT BTAZX', '', '', '', '', '', '', '', '', '04000022SIO                           COMPRA CON TARJETA'] }),
+    A({ date: '04/10/2026', out: '28', common: '12', own: '040', ref2: '4800000000000001', comp: ['DIONISOS', '', '', '', '', '', '', '', '', '04000022SIO                           COMPRA CON TARJETA'] }),
+    A({ date: '03/10/2026', out: '26', common: '12', own: '040', ref2: '4800000000000001', comp: ['HARTQUATERS', '', '', '', '', '', '', '', '', '04000022SIO                           COMPRA CON TARJETA'] }),
+  ].join('\n');
+  const a = analyzeRows(splitByAccount(parseCSV(rows))[0].rows);
+  const d = caixaRowsToTransactions(a.data, a.mapping.cols).transactions.map(t => t.description);
+  assert.deepEqual(d, ['SUPER PALCK 2', 'Glovo 05OCT BTAZX', 'DIONISOS', 'HARTQUATERS']);
+});

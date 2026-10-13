@@ -33,11 +33,18 @@ export function accountLabel(account) {
   return 'CaixaBank ····' + digits.slice(-4);
 }
 
-// A segment is bank noise when it is a number, a bank code or an IBAN.
+// A segment is bank noise when it is a number, a single-token bank code
+// ("04000022SIO"), an IBAN or a BIC. Merchant names that mix words and
+// numbers ("SUPER PALCK 2", "Glovo 05OCT BTAZX") are not codes.
 function isCode(s) {
   if (/^\d[\d\s]*$/.test(s)) return true;
   const t = s.replace(/\s/g, '');
-  return (/\d/.test(t) && /^[A-Z0-9]{8,}$/i.test(t)) || /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(t);
+  if (/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/i.test(t) && (t.match(/\d/g) || []).length >= 10) return true; // IBAN
+  if (/\s/.test(s.trim())) return false;
+  if (/\d/.test(t) && /^[A-Z0-9]{8,}$/i.test(t)) return true;
+  // BIC: 8 or 11 characters. An 8-letter word ("DIONISOS") is not one; real
+  // 8-character BICs carry a digit, 11-character ones usually end in XXX.
+  return /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(t) && (/\d/.test(t) || /XXX$/.test(t));
 }
 
 const nameKey = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z ]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
