@@ -1,4 +1,4 @@
-import { load, subscribe, getState } from './store.js';
+import { load, subscribe, getState, onSaveError, storageProblem } from './store.js';
 import { buildContext } from './analysis.js';
 import { clear } from './util.js';
 import * as home from './views/home.js';
@@ -104,8 +104,29 @@ function watchSync() {
   });
 }
 
+function storageBanner() {
+  const b = document.createElement('div');
+  b.className = 'banner storage-problem';
+  b.innerHTML = '<div><b>Your data couldn\'t be read.</b> <span class="muted">Nothing will be saved or synced so it isn\'t overwritten. Close the app completely and open it again.</span></div>';
+  const btn = Object.assign(document.createElement('button'), { className: 'btn sm primary', textContent: 'Reload' });
+  btn.onclick = () => location.reload();
+  b.append(btn);
+  document.body.prepend(b);
+}
+
 async function start() {
   await load();
+  if (storageProblem) {
+    storageBanner();
+    render();
+    return;
+  }
+  let saveWarned = 0;
+  onSaveError(() => {
+    if (Date.now() - saveWarned < 60000) return;
+    saveWarned = Date.now();
+    toast('Couldn\'t save your latest changes on this device. Download a backup from Settings.', { timeout: 12000 });
+  });
   subscribe(() => {
     ctxCache = null;
     updateBadge();

@@ -3,7 +3,7 @@
 // with everything pre-detected.
 
 import { h, clear, money, dateLabel, uid } from '../util.js';
-import { getState, update, requestPersistence } from '../store.js';
+import { getState, update, requestPersistence, snapshot } from '../store.js';
 import { readFileRows, analyzeFile, buildImport, commitImport, undoImport } from '../importer.js';
 import { splitByAccount } from '../caixa.js';
 import { findRule, keywordSuggestion } from '../categorize.js';
@@ -294,7 +294,8 @@ function resultCard(view, r) {
         h('button', { class: 'btn ghost sm', onclick: () => undo(view, r.id) }, 'Undo'))));
 }
 
-function undo(view, id) {
+async function undo(view, id) {
+  await snapshot('Before deleting an import');
   update(s => undoImport(s, id));
   session.results = session.results.filter(r => r.id !== id);
   toast('Import undone');

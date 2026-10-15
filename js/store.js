@@ -3,6 +3,7 @@
 
 import { defaultState, DEFAULT_CATEGORIES, LEGACY_CATEGORY_NAMES } from './defaults.js';
 import { TRIP_CATEGORIES } from './trips.js';
+import { createSnapshots, hasContent } from './snapshots.js';
 
 const DB_NAME = 'finanzas';
 const STORE = 'kv';
@@ -76,23 +77,69 @@ export function migrate(s) {
   return out;
 }
 
+function lsGet() {
+  try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; }
+}
+
+// True when the saved data couldn't be read. The app then shows a warning and
+// never saves or syncs, so an empty screen can't overwrite the real data.
+export let storageProblem = null;
+
 export async function load() {
   let raw = null;
-  try { raw = await idbGet(); } catch {
-    try { raw = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { raw = null; }
+  let idbError = null;
+  // iOS Safari sometimes fails to open IndexedDB on the first try after the
+  // app was in the background; retry with a fresh connection.
+  for (let i = 0; i < 3; i++) {
+    try { raw = await idbGet(); idbError = null; break; } catch (e) {
+      idbError = e; dbPromise = null;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  // If a save ever fell back to localStorage, that copy may be the only one.
+  if (!raw || !hasContent(raw)) {
+    const ls = lsGet();
+    if (ls && hasContent(ls) && (!raw || (ls.meta?.updatedAt || 0) >= (raw.meta?.updatedAt || 0))) raw = ls;
+  }
+  if (idbError && !raw && 'indexedDB' in globalThis) {
+    storageProblem = idbError;
+    state = defaultState();
+    return state;
   }
   state = raw ? migrate(raw) : defaultState();
+  snapshots.daily(state).catch(() => {});
+  requestPersistence();
   return state;
 }
+
+// ---------- restore points ----------
+export const snapshots = createSnapshots({ kvGet: k => kvGet(k), kvSet: (k, v) => kvSet(k, v), kvDel: k => kvDel(k) });
+
+// Take a restore point of the current data (before a bulk delete or replace).
+export async function snapshot(reason) {
+  try { await flush(); return await snapshots.take(state, reason); } catch (e) { console.error('snapshot', e); return null; }
+}
+
+// ---------- save errors ----------
+const errorListeners = new Set();
+export function onSaveError(fn) { errorListeners.add(fn); return () => errorListeners.delete(fn); }
 
 export function getState() { return state; }
 
 async function flush() {
   clearTimeout(saveTimer);
   saveTimer = null;
-  const snapshot = JSON.parse(JSON.stringify(state));
-  try { await idbSet(snapshot); } catch {
-    try { localStorage.setItem(KEY, JSON.stringify(snapshot)); } catch (e) { console.error('Could not save', e); }
+  if (storageProblem) return;
+  const copy = JSON.parse(JSON.stringify(state));
+  try {
+    await idbSet(copy);
+    // A stale localStorage fallback must not win on the next load.
+    try { if (localStorage.getItem(KEY)) localStorage.removeItem(KEY); } catch { /* ignore */ }
+  } catch (idbErr) {
+    try { localStorage.setItem(KEY, JSON.stringify(copy)); } catch (e) {
+      console.error('Could not save', idbErr, e);
+      for (const l of errorListeners) l(e);
+    }
   }
 }
 
@@ -108,7 +155,9 @@ export function update(fn) {
 
 // Replace everything (restore a backup, or apply the copy from Drive).
 // fromSync keeps the incoming timestamp so it isn't re-uploaded as a change.
-export function replaceState(next, { fromSync = false } = {}) {
+// A restore point of the current data is taken first.
+export async function replaceState(next, { fromSync = false, reason = 'Before replacing data' } = {}) {
+  if (hasContent(state)) await snapshot(reason);
   state = migrate(next);
   if (!fromSync) {
     state.meta.updatedAt = Date.now();
@@ -116,7 +165,7 @@ export function replaceState(next, { fromSync = false } = {}) {
   }
   const done = flush();
   for (const l of listeners) l(state);
-  return done;
+  await done;
 }
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }

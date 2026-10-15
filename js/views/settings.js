@@ -1,6 +1,9 @@
 import { h, uid, money } from '../util.js';
 import { ACCOUNT_ROLES } from '../buckets.js';
-import { update, replaceState, getState } from '../store.js';
+import { update, replaceState, getState, snapshots, snapshot } from '../store.js';
+import { parseBackupText, decryptBackup } from '../restore.js';
+import { summarizeState } from '../snapshots.js';
+import { describeCopy } from './sync.js';
 import { openSheet, catIcon, toast, KIND_LABELS } from '../ui.js';
 import { loadSample, removeSample } from '../sample.js';
 import { defaultState } from '../defaults.js';
@@ -15,25 +18,48 @@ export function render(root, { state }) {
   grid.append(syncCard());
 
   // ---------- backup ----------
-  const fileIn = h('input', { type: 'file', accept: '.json,application/json', hidden: true });
+  const fileIn = h('input', { type: 'file', accept: '.json,application/json,text/plain', hidden: true });
   fileIn.addEventListener('change', async () => {
-    const f = fileIn.files[0]; if (!f) return;
+    const f = fileIn.files[0]; fileIn.value = ''; if (!f) return;
     try {
-      const data = JSON.parse(await f.text());
-      if (!Array.isArray(data.transactions) || !Array.isArray(data.categories)) throw new Error('invalid format');
-      if (!confirm(`Restore backup with ${data.transactions.length} transactions? Current data will be replaced.`)) return;
-      replaceState(data);
-      toast('Backup restored');
+      const parsed = parseBackupText(await f.text());
+      if (parsed.encrypted) return passwordForBackup(parsed.envelope);
+      confirmRestore(parsed.data, 'backup file');
     } catch (e) { alert('Could not restore: ' + e.message); }
   });
   const lastBackup = state.settings.lastBackupAt ? new Date(state.settings.lastBackupAt).toLocaleDateString('en-GB') : 'never';
   grid.append(h('section', { class: 'card span-6' },
     h('div', { class: 'card-head' }, h('h2', {}, 'Backup'), h('span', { class: 'meta' }, 'last: ' + lastBackup)),
-    h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Download a file with everything (transactions, rules, plan). Also use it to move your data from computer to phone.'),
+    h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Download a file with everything (transactions, rules, plan). Restore from file also opens an encrypted sync file (finanzas-data.enc.json), such as an older version downloaded from Google Drive, with your sync password.'),
     h('div', { class: 'btn-row' },
       h('button', { class: 'btn primary', onclick: exportJSON }, 'Download backup'),
-      h('button', { class: 'btn', onclick: () => fileIn.click() }, 'Restore backup'),
+      h('button', { class: 'btn', onclick: () => fileIn.click() }, 'Restore from file'),
       h('button', { class: 'btn ghost', onclick: exportCSV }, 'Export transactions CSV'), fileIn)));
+
+  // ---------- restore points ----------
+  const pointsCard = h('section', { class: 'card span-6' },
+    h('div', { class: 'card-head' }, h('h2', {}, 'Restore points'), h('span', { class: 'meta' }, 'on this device')),
+    h('p', { class: 'small muted', style: { marginTop: 0 } }, 'Saved automatically once a day and before anything replaces or deletes data in bulk (sync downloads, restores, undoing an import, deleting an account).'));
+  const pointsList = h('div', { class: 'rows' }, h('p', { class: 'small muted' }, 'Loading…'));
+  pointsCard.append(pointsList);
+  grid.append(pointsCard);
+  snapshots.list().then(list => {
+    pointsList.replaceChildren(...(list.length ? list.map(sn => h('div', { class: 'row' },
+      h('div', { class: 'grow' },
+        h('div', { class: 'title' }, new Date(sn.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ' + sn.reason),
+        h('div', { class: 'desc' }, describeCopy(sn.summary))),
+      h('button', { class: 'btn sm ghost', onclick: async () => {
+        const data = await snapshots.get(sn.id);
+        if (!data) return alert('This restore point is no longer available.');
+        download(`finanzas-restore-point-${new Date(sn.at).toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 1), 'application/json');
+      } }, 'Download'),
+      h('button', { class: 'btn sm', onclick: async () => {
+        const data = await snapshots.get(sn.id);
+        if (!data) return alert('This restore point is no longer available.');
+        confirmRestore(data, 'restore point');
+      } }, 'Restore')))
+      : [h('p', { class: 'small muted' }, 'None yet. The first one is saved the next time the app opens with data.')]));
+  });
 
   // ---------- preferences ----------
   const thr = h('input', { type: 'number', min: '0', step: '10', value: state.settings.oneOffThreshold, style: { width: '110px' } });
@@ -88,8 +114,9 @@ export function render(root, { state }) {
       h('select', { class: 'acc-role', 'aria-label': 'What ' + a.name + ' is used for', onchange: e => update(s => { s.accounts.find(x => x.id === a.id).role = e.target.value || null; }) },
         h('option', { value: '' }, 'Used for…'), ACCOUNT_ROLES.map(([v, l]) => h('option', { value: v, selected: a.role === v }, l))),
       h('button', { class: 'btn sm ghost', onclick: () => { const name = prompt('Account name', a.name); if (name) update(s => { s.accounts.find(x => x.id === a.id).name = name.trim(); }); } }, 'Rename'),
-      h('button', { class: 'btn sm ghost danger', onclick: () => {
+      h('button', { class: 'btn sm ghost danger', onclick: async () => {
         if (!confirm(`Delete “${a.name}” and its ${n} transactions?`)) return;
+        await snapshot(`Before deleting ${a.name}`);
         update(s => {
           s.accounts = s.accounts.filter(x => x.id !== a.id);
           s.transactions = s.transactions.filter(t => t.accountId !== a.id);
@@ -167,14 +194,61 @@ export function render(root, { state }) {
   grid.append(h('section', { class: 'card span-12' },
     h('div', { class: 'card-head' }, h('h2', {}, 'Data')),
     h('div', { class: 'btn-row' },
-      hasSample ? h('button', { class: 'btn', onclick: () => { update(s => removeSample(s)); toast('Sample data removed'); } }, 'Remove sample data')
+      hasSample ? h('button', { class: 'btn', onclick: async () => { await snapshot('Before removing sample data'); update(s => removeSample(s)); toast('Sample data removed'); } }, 'Remove sample data')
         : h('button', { class: 'btn', onclick: () => { update(s => loadSample(s)); location.hash = '#/resumen'; } }, 'Load sample data'),
-      h('button', { class: 'btn danger', onclick: () => {
-        if (!confirm('Delete ALL data on this device? This cannot be undone.')) return;
-        if (!confirm('Are you sure? Download a backup first.')) return;
-        replaceState(defaultState());
+      h('button', { class: 'btn danger', onclick: async () => {
+        if (!confirm('Delete ALL data on this device? A restore point is kept on this device, but if sync is on, your other devices will be asked to replace their data too.')) return;
+        replaceState(defaultState(), { reason: 'Before deleting all data' });
         location.hash = '#/importar';
       } }, 'Delete all data'))));
+}
+
+// Show what the file holds next to what's on this device, then replace.
+function confirmRestore(data, what) {
+  const incoming = summarizeState(data), current = summarizeState(getState());
+  const go = h('button', { class: 'btn primary' }, 'Restore');
+  const sheet = openSheet({
+    title: 'Restore this ' + what + '?',
+    body: h('div', { class: 'stack' },
+      h('p', { class: 'small', style: { marginTop: 0 } }, h('b', {}, 'From the ' + what + ': '), describeCopy(incoming)),
+      h('p', { class: 'small' }, h('b', {}, 'On this device now: '), describeCopy(current)),
+      h('p', { class: 'small muted' }, 'The data on this device is replaced. A restore point of it is kept first. If sync is on, the restored data is uploaded to Google Drive.')),
+    foot: [h('button', { class: 'btn', onclick: () => sheet.close() }, 'Cancel'), go],
+  });
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    await replaceState(data, { reason: 'Before restoring a ' + what });
+    sheet.close();
+    toast('Restored: ' + incoming.transactions.toLocaleString('en-GB') + ' transactions');
+    location.hash = '#/inicio';
+  });
+}
+
+function passwordForBackup(envelope) {
+  const pw = h('input', { type: 'password', autocomplete: 'current-password', 'aria-label': 'Sync password' });
+  const err = h('div', { class: 'small', style: { color: 'var(--neg)', minHeight: '1.2em' } });
+  const go = h('button', { class: 'btn primary' }, 'Open');
+  const sheet = openSheet({
+    title: 'Open encrypted file',
+    body: h('div', { class: 'stack' },
+      h('p', { class: 'small', style: { marginTop: 0 } }, 'This is an encrypted sync file' + (envelope.savedAt ? ', saved ' + new Date(envelope.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + (envelope.device ? ' from ' + envelope.device : '') : '') + '. Enter the sync password it was saved with.'),
+      h('label', { class: 'field' }, h('span', {}, 'Sync password'), pw), err),
+    foot: go,
+  });
+  async function submit() {
+    if (!pw.value) return;
+    go.disabled = true; go.textContent = 'Opening…'; err.textContent = '';
+    try {
+      const data = await decryptBackup(envelope, pw.value);
+      sheet.close();
+      confirmRestore(data, 'encrypted file');
+    } catch (e) {
+      err.textContent = e.name === 'WrongPasswordError' ? 'Wrong password.' : e.message;
+      go.disabled = false; go.textContent = 'Try again';
+    }
+  }
+  go.addEventListener('click', submit);
+  pw.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
 }
 
 function download(name, content, type) {

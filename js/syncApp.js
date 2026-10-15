@@ -4,7 +4,7 @@ import { getState, replaceState, kvGet, kvSet, kvDel, onLocalChange, flushNow } 
 import { createSync } from './sync.js';
 import { debounce } from './util.js';
 
-export const sync = createSync({ drive, store: { getState, replaceState, kvGet, kvSet, kvDel } });
+export const sync = createSync({ drive, store: { getState, replaceState: (next, o) => replaceState(next, { reason: 'Before sync download', ...o }), kvGet, kvSet, kvDel } });
 export const driveConfigured = drive.configured;
 
 export async function startSync() {

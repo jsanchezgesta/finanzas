@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveKey, encryptJSON, decryptJSON, randomSalt, WrongPasswordError } from '../js/crypto.js';
-import { createSync, decide } from '../js/sync.js';
+import { createSync, decide, wouldShrink } from '../js/sync.js';
 import { migrate } from '../js/store.js';
 import { defaultState } from '../js/defaults.js';
 
@@ -130,4 +130,68 @@ test('two devices sync through Drive, with conflicts and password changes', asyn
   await phone.sync.disconnect();
   assert.equal(phone.sync.status.state, 'off');
   assert.equal(phone.kv.size, 0);
+});
+
+// The 14 Oct 2026 incident: a phone with only a trip pushed its copy to Drive
+// and the laptop, which had all the transactions, downloaded it and lost them.
+test('a much smaller Drive copy is never applied without asking', async () => {
+  const drive = fakeDrive();
+  const many = defaultState();
+  many.accounts.push({ id: 'acc', name: 'CaixaBank' });
+  for (let i = 0; i < 300; i++) many.transactions.push({ id: 'x' + i, hash: 'h' + i, accountId: 'acc', date: '2026-09-01', amount: -1, merchant: 'm', merchantName: 'M', description: 'm' });
+  const laptop = device(drive, many);
+  laptop.edit(() => {});
+  let p = await laptop.sync.probe();
+  await laptop.sync.connect('pw-1', { ...p, remember: true });
+
+  // The phone has only a trip, so joining is a conflict, and the sheet can
+  // show what each copy holds.
+  const phone = device(drive);
+  phone.edit(s => s.trips.push({ id: 't1', name: 'Lisbon' }));
+  p = await phone.sync.probe();
+  assert.equal(await phone.sync.connect('pw-1', p), 'conflict');
+  assert.equal(phone.sync.pending.local.transactions, 0);
+  assert.equal(phone.sync.pending.drive.transactions, 300);
+
+  // Even if the phone's copy is kept and uploaded...
+  assert.equal(await phone.sync.resolve('local'), 'push');
+  // ...the laptop doesn't apply it: it asks, and keeps its data meanwhile.
+  assert.equal(await laptop.sync.sync(), 'conflict');
+  assert.equal(laptop.state.transactions.length, 300);
+  assert.equal(laptop.sync.pending.shrink, true);
+  assert.equal(laptop.sync.pending.drive.transactions, 0);
+  assert.equal(laptop.sync.pending.local.transactions, 300);
+  // Keeping the laptop copy restores Drive; the phone then gets everything.
+  assert.equal(await laptop.sync.resolve('local'), 'push');
+  assert.equal(await phone.sync.sync(), 'pull');
+  assert.equal(phone.state.transactions.length, 300);
+});
+
+test('choosing the smaller Drive copy explicitly does apply it', async () => {
+  const drive = fakeDrive();
+  const many = defaultState();
+  for (let i = 0; i < 50; i++) many.transactions.push({ id: 'x' + i, hash: 'h' + i, accountId: 'a', date: '2026-09-01', amount: -1, merchant: 'm', merchantName: 'M', description: 'm' });
+  const a = device(drive, many);
+  a.edit(() => {});
+  await a.sync.connect('pw', { ...(await a.sync.probe()), remember: true });
+  const b = device(drive);
+  assert.equal(await b.sync.connect('pw', await b.sync.probe()), 'pulled');
+  // B deletes most transactions (e.g. undoes an import) and syncs.
+  b.edit(s => { s.transactions = s.transactions.slice(0, 5); });
+  assert.equal(await b.sync.sync(), 'push');
+  assert.equal(await a.sync.sync(), 'conflict');
+  assert.equal(a.state.transactions.length, 50);
+  assert.equal(await a.sync.resolve('remote'), 'pull');
+  assert.equal(a.state.transactions.length, 5);
+});
+
+test('wouldShrink thresholds', () => {
+  const st = (n, acc = 1) => ({ transactions: Array.from({ length: n }, (_, i) => ({ date: '2026-01-01', i })), accounts: Array.from({ length: acc }, () => ({})) });
+  assert.equal(wouldShrink(st(100), st(0)), true);
+  assert.equal(wouldShrink(st(100), st(70)), true);
+  assert.equal(wouldShrink(st(100), st(90)), false); // small deletions sync normally
+  assert.equal(wouldShrink(st(10), st(0)), true);
+  assert.equal(wouldShrink(st(10), st(5)), false);
+  assert.equal(wouldShrink(st(0, 0), st(0, 0)), false);
+  assert.equal(wouldShrink(st(5, 2), st(5, 0)), true);
 });

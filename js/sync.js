@@ -10,6 +10,7 @@
 // changes without downloading anything.
 
 import { deriveKey, encryptJSON, decryptJSON, randomSalt, toB64, fromB64, WrongPasswordError } from './crypto.js';
+import { summarizeState } from './snapshots.js';
 
 const META_KEY = 'finanzas.sync';
 const VAULT_KEY = 'vault';
@@ -36,6 +37,17 @@ export function deviceName(ua = globalThis.navigator?.userAgent || '') {
 }
 
 const hasData = s => (s.transactions?.length || 0) + (s.trips?.length || 0) > 0;
+
+// Would replacing `local` with `remote` lose a large part of the data? Then a
+// download is never applied silently: the user sees both copies and chooses.
+export function wouldShrink(local, remote) {
+  const l = summarizeState(local), r = summarizeState(remote);
+  const lost = l.transactions - r.transactions;
+  if (l.transactions > 0 && r.transactions === 0) return true;
+  if (lost >= 20 && r.transactions < l.transactions * 0.8) return true;
+  if (l.accounts > 0 && r.accounts === 0) return true;
+  return false;
+}
 
 export class PasswordChangedError extends Error {
   constructor() { super('The sync password was changed on another device. Enter the new one.'); this.name = 'PasswordChangedError'; }
@@ -96,12 +108,12 @@ export function createSync({ drive, store, storage = globalThis.localStorage, no
       saveMeta();
       const local = store.getState();
       const remote = Number(env.updatedAt) || data.meta?.updatedAt || 0;
-      if (!hasData(local) || (local.meta?.updatedAt && local.meta.updatedAt === remote)) {
+      if (!hasData(local) || (local.meta?.updatedAt && local.meta.updatedAt === remote && !wouldShrink(local, data))) {
         await applyRemote(data, remote);
         setStatus({ state: 'idle', message: 'Loaded your data from Google Drive' });
         return 'pulled';
       }
-      pending = { remote, device: env.device, savedAt: env.savedAt };
+      pending = { remote, device: env.device, savedAt: env.savedAt, local: summarizeState(local), drive: summarizeState(data) };
       setStatus({ state: 'conflict', ...pending });
       return 'conflict';
     }
@@ -144,15 +156,39 @@ export function createSync({ drive, store, storage = globalThis.localStorage, no
     saveMeta();
   }
 
-  async function pull() {
+  async function downloadRemote() {
     const env = await drive.download(meta.fileId);
     if (env.salt !== meta.salt) {
       key = null;
       try { await store.kvDel(VAULT_KEY); } catch { /* ignore */ }
       throw new PasswordChangedError();
     }
-    const data = await decryptJSON(key, env);
+    return { env, data: await decryptJSON(key, env) };
+  }
+
+  // Returns false (and applies nothing) when the Drive copy would wipe out
+  // most of this device's data and the user hasn't chosen it explicitly.
+  async function pull({ chosen = false } = {}) {
+    const { env, data } = await downloadRemote();
+    const local = store.getState();
+    if (!chosen && wouldShrink(local, data)) {
+      pending = { remote: Number(env.updatedAt) || null, device: env.device, savedAt: env.savedAt, local: summarizeState(local), drive: summarizeState(data), shrink: true };
+      return false;
+    }
     await applyRemote(data, Number(env.updatedAt) || data.meta?.updatedAt || now());
+    return true;
+  }
+
+  // Counts for both copies, shown when the user has to choose.
+  async function describeConflict(remote) {
+    const local = summarizeState(store.getState());
+    try {
+      const { env, data } = await downloadRemote();
+      return { remote: remote.stamp, device: remote.device || env.device, savedAt: env.savedAt, local, drive: summarizeState(data) };
+    } catch (e) {
+      if (e instanceof PasswordChangedError) throw e;
+      return { remote: remote.stamp, device: remote.device, local };
+    }
   }
 
   async function push() {
@@ -203,12 +239,15 @@ export function createSync({ drive, store, storage = globalThis.localStorage, no
       });
       if (action === 'pull' && !meta.fileId) action = 'push';
       if (action === 'conflict') {
-        pending = { remote: remote.stamp, device: remote.device };
+        pending = await describeConflict(remote);
         setStatus({ state: 'conflict', ...pending });
         return 'conflict';
       }
       if (action === 'push') await push();
-      if (action === 'pull') await pull();
+      if (action === 'pull' && !(await pull({ chosen: force === 'pull' }))) {
+        setStatus({ state: 'conflict', ...pending });
+        return 'conflict';
+      }
       if (action === 'none') { meta.lastSyncAt = now(); saveMeta(); }
       pending = null;
       setStatus({ state: 'idle', action });

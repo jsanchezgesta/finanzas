@@ -188,25 +188,51 @@ export function unlockSheet() {
 }
 
 let conflictOpen = false;
+// What a copy holds, in one line: "1,576 transactions · 2 accounts · 1 trip".
+export function describeCopy(c) {
+  if (!c) return 'contents unknown';
+  const n = (v, one, many) => `${v.toLocaleString('en-GB')} ${v === 1 ? one : many}`;
+  return [n(c.transactions, 'transaction', 'transactions'), n(c.accounts, 'account', 'accounts'), n(c.trips, 'trip', 'trips')].join(' · ')
+    + (c.lastDate ? ` · up to ${new Date(c.lastDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : '');
+}
+
 export function conflictSheet() {
   if (conflictOpen) return;
   conflictOpen = true;
   const p = sync.pending || {};
+  const local = p.local, remote = p.drive;
+  // The copy with more transactions is the safe default; picking the other
+  // one needs a second confirmation that says what will be lost.
+  const safer = local && remote ? (remote.transactions > local.transactions ? 'remote' : 'local') : null;
   const choose = async choice => {
+    const keep = choice === 'remote' ? remote : local;
+    const lose = choice === 'remote' ? local : remote;
+    if (keep && lose && lose.transactions > keep.transactions) {
+      const msg = choice === 'remote'
+        ? `This replaces the ${lose.transactions.toLocaleString('en-GB')} transactions on this device with the Drive copy, which has ${keep.transactions.toLocaleString('en-GB')}. A restore point is kept on this device. Continue?`
+        : `This replaces the Drive copy (${lose.transactions.toLocaleString('en-GB')} transactions) with this device's copy (${keep.transactions.toLocaleString('en-GB')}). Your other devices will ask before using it. Continue?`;
+      if (!confirm(msg)) return;
+    }
     sheet.close();
     const r = await sync.resolve(choice);
     if (r === 'pull') toast('Using the copy from Google Drive');
     if (r === 'push') toast('Kept this device\'s copy');
+    if (r === 'conflict') conflictSheet();
   };
+  const option = (choice, title, copy) => h('button', { class: 'btn lg copy-choice' + (choice === safer ? ' primary' : ''), onclick: () => choose(choice) },
+    h('span', { class: 'copy-title' }, title + (choice === safer ? ' (has more data)' : '')),
+    h('span', { class: 'copy-detail' }, describeCopy(copy)));
+  const intro = p.shrink
+    ? 'The copy in Google Drive has much less data than this device, so it was not applied. This usually means another device uploaded an incomplete copy.'
+    : 'This device and Google Drive both changed since they last synced. The copy you don\'t pick is replaced.';
   const sheet = openSheet({
     title: 'Which copy should we keep?',
     onClose: () => { conflictOpen = false; },
     body: h('div', { class: 'stack' },
-      h('p', { class: 'small', style: { marginTop: 0 } }, 'This device and Google Drive both changed since they last synced. The copy you don\'t pick is replaced.'),
-      h('button', { class: 'btn lg', onclick: () => choose('remote') },
-        `Use the Drive copy (${p.device ? 'from ' + p.device + ', ' : ''}${when(p.remote)})`),
-      h('button', { class: 'btn lg', onclick: () => choose('local') }, 'Keep this device\'s copy'),
-      h('p', { class: 'small muted' }, 'Not sure? Download a backup in Settings first, then choose.')),
+      h('p', { class: 'small', style: { marginTop: 0 } }, intro),
+      option('local', 'Keep this device\'s copy', local),
+      option('remote', `Use the Drive copy (${p.device ? 'from ' + p.device + ', ' : ''}${when(p.remote)})`, remote),
+      h('p', { class: 'small muted' }, 'Either way, a restore point of this device\'s data is kept in Settings → Restore points.')),
   });
 }
 
